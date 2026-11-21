@@ -14,6 +14,7 @@ config/name="XNAndroid"
 run/main_scene="uid://bsjq4v1lcdign"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 run/max_fps=60
+run/low_processor_mode=true
 config/icon="res://icon.svg"
 
 [audio]

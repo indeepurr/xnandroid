@@ -90,7 +90,7 @@ func _on_file_selected(path: String) -> void:
 		
 		var material := StandardMaterial3D.new()
 		material.normal_enabled = false
-		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		material.cull_mode = BaseMaterial3D.CULL_BACK
 		material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
 		material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
@@ -110,9 +110,9 @@ func _on_file_selected(path: String) -> void:
 					material.alpha_scissor_threshold = .3
 					
 					material.render_priority = 1
-			else:
-				material.normal_enabled = true
-				material.normal_texture = tex
+			#else:
+				#material.normal_enabled = true
+				#material.normal_texture = tex
 			
 		mesh_inst.material_override = material
 		
