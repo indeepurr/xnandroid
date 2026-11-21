@@ -13,6 +13,7 @@ config_version=5
 config/name="XNAndroid"
 run/main_scene="uid://bsjq4v1lcdign"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+run/max_fps=60
 config/icon="res://icon.svg"
 
 [display]
@@ -30,4 +31,3 @@ window/vsync/vsync_mode=0
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-anti_aliasing/quality/msaa_3d=1
