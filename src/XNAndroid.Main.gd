@@ -97,6 +97,9 @@ func _on_file_selected(path: String) -> void:
 		material.roughness = .7
 		
 		for idx in range( mesh["textures"].size() ):
+			if idx > 0:
+				break
+			
 			var tex := XPSParser.load_texture(path.get_base_dir().path_join(mesh["textures"][idx]["file"]), textures)
 			
 			if tex == null:
