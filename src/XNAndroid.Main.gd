@@ -56,9 +56,12 @@ func _setup_ui():
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 
 func _on_file_selected(path: String) -> void:
-	var data := XPSParser.new().parse(path)
+	var parser := XPSParser.new()
+	var data := parser.parse(path)
 	
 	if data.is_empty():
+		print( parser.last_error )
+		
 		for child in get_children():
 			if child is FileDialog:
 				child.queue_free()
