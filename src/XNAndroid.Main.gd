@@ -17,12 +17,11 @@ extends Node3D
 # Variables
 
 # Temp
-var model := Node3D.new()
+var model : Node3D
 var skeleton : Skeleton3D
 var textures := {}
 
 func _ready():
-	add_child(POSE_Controller)
 	_setup_ui()
 
 # func _process(delta: float) -> void:
@@ -129,6 +128,9 @@ func _on_file_selected(path: String) -> void:
 	UI_BoneMarkers.setup(skeleton, $CamRig/Camera3D)
 	
 	UI_BoneMarkers.bone_selected.connect(func(bone):
+		if bone < 0:
+			return
+		
 		print("selected bone %s (index: %d)" % [ skeleton.get_bone_name(bone), bone ])
 	)
 	

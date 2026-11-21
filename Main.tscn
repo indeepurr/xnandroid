@@ -1,0 +1,175 @@
+[gd_scene format=3 uid="uid://bsjq4v1lcdign"]
+
+[ext_resource type="Script" uid="uid://y3ap3tg52los" path="res://src/XNAndroid.Main.gd" id="1_cm0pq"]
+[ext_resource type="Texture2D" uid="uid://deba06qkxs64q" path="res://assets/add.png" id="1_glv2v"]
+[ext_resource type="Script" uid="uid://jmmhthnitil1" path="res://src/XNAndroid.Camera.gd" id="1_r0du0"]
+[ext_resource type="Texture2D" uid="uid://caac3g6iyjci1" path="res://assets/dev/Prefab_Black.png" id="1_uu6xs"]
+[ext_resource type="Texture2D" uid="uid://cemvmxdk6dvbl" path="res://assets/outfit.png" id="5_fos0i"]
+[ext_resource type="Script" uid="uid://diw7wykrkty46" path="res://src/XNAndroid.BoneMarkers.gd" id="6_3dxm6"]
+[ext_resource type="Script" uid="uid://u1gwob13mook" path="res://src/XNAndroid.PoseController.gd" id="7_lgr22"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fos0i"]
+
+[sub_resource type="Sky" id="Sky_cm0pq"]
+sky_material = SubResource("ProceduralSkyMaterial_fos0i")
+
+[sub_resource type="Environment" id="Environment_r0du0"]
+background_mode = 2
+sky = SubResource("Sky_cm0pq")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_77882"]
+albedo_texture = ExtResource("1_uu6xs")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_0170i"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0170i"]
+bg_color = Color(0, 0, 0, 0.13725491)
+
+[node name="Scene" type="Node3D" unique_id=1311452741]
+script = ExtResource("1_cm0pq")
+
+[node name="Lighting" type="Node3D" parent="." unique_id=1551817556]
+
+[node name="Front Sun" type="DirectionalLight3D" parent="Lighting" unique_id=851483179]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
+light_energy = 0.25
+shadow_enabled = true
+directional_shadow_mode = 0
+
+[node name="Back Sun" type="DirectionalLight3D" parent="Lighting" unique_id=188954299]
+transform = Transform3D(1, 0, 0, 0, -1, -8.742278e-08, 0, 8.742278e-08, -1, 0, 0, 0)
+light_energy = 0.25
+shadow_enabled = true
+directional_shadow_mode = 0
+
+[node name="CamRig" type="Node3D" parent="." unique_id=947991568 node_paths=PackedStringArray("camera", "pose")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
+script = ExtResource("1_r0du0")
+camera = NodePath("Camera3D")
+pose = NodePath("../UI/PoseController")
+pan_speed = 0.002
+
+[node name="Camera3D" type="Camera3D" parent="CamRig" unique_id=831956340]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+environment = SubResource("Environment_r0du0")
+fov = 50.0
+
+[node name="Floor" type="MeshInstance3D" parent="." unique_id=1932328247]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_77882")
+mesh = SubResource("PlaneMesh_0170i")
+
+[node name="UI" type="Control" parent="." unique_id=703575028]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBox" type="VBoxContainer" parent="UI" unique_id=1720545146]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 30.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Header" type="PanelContainer" parent="UI/HBox" unique_id=360796750]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_0170i")
+
+[node name="HeaderOptions" type="HBoxContainer" parent="UI/HBox/Header" unique_id=678749758]
+propagate_maximum_size = false
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="BTN_loadModel" type="Button" parent="UI/HBox/Header/HeaderOptions" unique_id=1511310105]
+custom_minimum_size = Vector2(0, 4.14)
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+text = "Load"
+icon = ExtResource("1_glv2v")
+
+[node name="Center" type="Control" parent="UI/HBox" unique_id=971060541]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="ExtraPopup" type="Control" parent="UI/HBox/Center" unique_id=595338700]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="UI/HBox/Center/ExtraPopup" unique_id=935948804]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -125.0
+offset_top = -250.0
+offset_right = 125.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/HBox/Center/ExtraPopup/PanelContainer" unique_id=1912324969]
+layout_mode = 2
+
+[node name="extraParts" type="VBoxContainer" parent="UI/HBox/Center/ExtraPopup/PanelContainer/ScrollContainer" unique_id=1690719074]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CheckButton" type="CheckButton" parent="UI/HBox/Center/ExtraPopup/PanelContainer/ScrollContainer/extraParts" unique_id=1126298392]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text_overrun_behavior = 3
+
+[node name="Footer" type="PanelContainer" parent="UI/HBox" unique_id=91991528]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_0170i")
+
+[node name="FooterOptions" type="HBoxContainer" parent="UI/HBox/Footer" unique_id=748962275]
+propagate_maximum_size = false
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="BTN_extrasModel" type="Button" parent="UI/HBox/Footer/FooterOptions" unique_id=426079076]
+custom_minimum_size = Vector2(0, 4.14)
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+disabled = true
+text = "Extras"
+icon = ExtResource("5_fos0i")
+
+[node name="BoneMarkers" type="Control" parent="UI" unique_id=1181600331]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_3dxm6")
+normal_color = Color(1, 1, 1, 0.19607843)
+selected_color = Color(1, 0.7490196, 0.101960786, 0.47058824)
+draw_radius = 3.0
+metadata/_custom_type_script = "uid://diw7wykrkty46"
+
+[node name="PoseController" type="Node" parent="UI" unique_id=272641385]
+script = ExtResource("7_lgr22")
+metadata/_custom_type_script = "uid://u1gwob13mook"
