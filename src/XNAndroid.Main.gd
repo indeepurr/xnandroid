@@ -59,6 +59,9 @@ func _on_file_selected(path: String) -> void:
 	var data := XPSParser.new().parse(path)
 	
 	if data.is_empty():
+		for child in get_children():
+			if child is FileDialog:
+				child.queue_free()
 		return
 	
 	if model:
