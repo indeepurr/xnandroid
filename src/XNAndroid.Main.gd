@@ -94,7 +94,7 @@ func _on_file_selected(path: String) -> void:
 		material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
 		material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		material.roughness = .7
+		material.roughness = .85
 		
 		for idx in range( mesh["textures"].size() ):
 			if idx > 0:
@@ -109,6 +109,7 @@ func _on_file_selected(path: String) -> void:
 				material.albedo_texture = tex
 				
 				if tex.get_meta("has_alpha", false):
+					material.cull_mode = BaseMaterial3D.CULL_DISABLED
 					material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 					material.alpha_scissor_threshold = .3
 					
