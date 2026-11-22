@@ -53,13 +53,13 @@ directional_shadow_mode = 0
 [node name="CamRig" type="Node3D" parent="." unique_id=947991568 node_paths=PackedStringArray("camera", "pose")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
 script = ExtResource("1_r0du0")
+camera = NodePath("Camera3D")
+pose = NodePath("../UI/PoseController")
 rotate_speed = null
 pan_speed = 0.002
 zoom_step = null
 min_distance = null
 max_distance = null
-camera = NodePath("Camera3D")
-pose = NodePath("../UI/PoseController")
 
 [node name="Camera3D" type="Camera3D" parent="CamRig" unique_id=831956340]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
@@ -169,6 +169,7 @@ theme_override_font_sizes/font_size = 13
 text_overrun_behavior = 3
 
 [node name="LightsPopup" type="Control" parent="UI/HBox/Center/VBoxContainer" unique_id=1598209929]
+visible = false
 layout_mode = 2
 
 [node name="PanelContainer2" type="PanelContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup" unique_id=232830250]
@@ -210,7 +211,7 @@ alignment = 1
 [node name="CenterContainer" type="CenterContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=27660679]
 layout_mode = 2
 
-[node name="CheckBox" type="CheckBox" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer" unique_id=685933431]
+[node name="BTN_LightOn" type="CheckBox" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer" unique_id=685933431]
 layout_mode = 2
 button_pressed = true
 text = "On"

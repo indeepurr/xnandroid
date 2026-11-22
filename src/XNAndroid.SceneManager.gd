@@ -73,6 +73,11 @@ func reset_camera() -> void:
 func get_light(index: int) -> SceneStates.LightData:
 	return _lights[index].copy() if _valid_light(index) else null
 
+func set_light_active(index : int, value : bool ) -> void:
+	if _valid_light(index):
+		_lights[index].on = value
+		_commit_light(index)
+
 func set_light_intensity(index: int, value: float) -> void:
 	if _valid_light(index):
 		_lights[index].intensity = value
@@ -104,6 +109,23 @@ func reset_lights() -> void:
 		_apply_light(i)
 		light_changed.emit(i)
 
+## The light as authored in the scene (what "reset" returns to). A copy; null before it's ready.
+func get_default_light(index: int) -> SceneStates.LightData:
+	if _default == null or index < 0 or index >= _default.lights.size():
+		return null
+	return _default.lights[index].copy()
+
+
+## Puts one value of a light back to its authored value: "intensity", "rot_x", "rot_y" or "shadow".
+func reset_light_property(index: int, property: String) -> void:
+	if _default == null or not _valid_light(index) or index >= _default.lights.size():
+		return
+	if not (property in ["intensity", "rot_x", "rot_y", "shadow"]):
+		return
+	_lights[index].set(property, _default.lights[index].get(property))
+	_commit_light(index)
+
+
 # ---------------- internals ----------------
 func _capture_default() -> void:
 	_default = capture()
@@ -124,7 +146,7 @@ func _apply_light(index: int) -> void:
 	node.global_rotation = Vector3(deg_to_rad(d.rot_x), deg_to_rad(d.rot_y), 0.0)
 	node.light_energy = d.intensity
 	# A light at zero intensity does nothing, so take it out of the lighting loop entirely.
-	node.visible = d.intensity > 0.0
+	node.visible = ( d.intensity > 0.0 and d.on )
 	# d.shadow is intentionally not applied yet.
 
 ## Works out the X / Y rotation from the light's direction, so a light authored with any

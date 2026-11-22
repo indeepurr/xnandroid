@@ -6,6 +6,7 @@ extends Node3D
 @onready var BTN_loadModel : Button = $UI/HBox/Header/HeaderOptions/BTN_loadModel
 @onready var BTN_sceneLights : Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
 @onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
+@onready var BTN_lightOn : CheckBox = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer/BTN_LightOn
 
 # Popups
 @onready var POPUP_extrasPop : Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
@@ -72,18 +73,22 @@ func _setup_ui():
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
 	
 	## Tabs
-	TAB_Lights.tab_changed.connect(func(index):
-		var currLight := SCENE_Manager.get_light(index)
-		
-		if not SCENE_Manager._valid_light(index):
-			return
-		
-		SLIDER_lightIntensity.value = currLight.intensity
-		SLIDER_lightX.value = currLight.rot_x
-		SLIDER_lightY.value = currLight.rot_y
-	)
+	TAB_Lights.tab_changed.connect(_sync_light_sliders)
+	_sync_light_sliders(TAB_Lights.current_tab)  # show the real light values from the start
+
+	## Double-click a light slider to reset it to the scene's authored value
+	_on_double_click(SLIDER_lightIntensity, func(): _reset_light("intensity"))
+	_on_double_click(SLIDER_lightX, func(): _reset_light("rot_x"))
+	_on_double_click(SLIDER_lightY, func(): _reset_light("rot_y"))
 	
 	## Sliders
+	BTN_lightOn.toggled.connect(func(value):
+		if not SCENE_Manager._valid_light(TAB_Lights.current_tab):
+			return
+		
+		SCENE_Manager.set_light_active(TAB_Lights.current_tab, value)
+	)
+	
 	SLIDER_lightIntensity.value_changed.connect(func(value):
 		if not SCENE_Manager._valid_light(TAB_Lights.current_tab):
 			return
@@ -205,3 +210,23 @@ func _on_file_selected(path: String) -> void:
 	for child in get_children():
 		if child is FileDialog:
 			child.queue_free()
+
+func _sync_light_sliders(index: int) -> void:
+	var l := SCENE_Manager.get_light(index)
+	if l == null:
+		return
+	SLIDER_lightIntensity.set_value_no_signal(l.intensity)
+	SLIDER_lightX.set_value_no_signal(l.rot_x / 90.0)  # sliders run -1..1, lights store degrees
+	SLIDER_lightY.set_value_no_signal(l.rot_y / 180.0)
+
+func _reset_light(property: String) -> void:
+	SCENE_Manager.reset_light_property(TAB_Lights.current_tab, property)
+	_sync_light_sliders(TAB_Lights.current_tab)
+
+func _on_double_click(slider: Range, action: Callable) -> void:
+	slider.tooltip_text = "Double-click to reset"
+	slider.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and event.double_click:
+			slider.accept_event()  # stop the slider from also jumping to the click position
+			action.call()
+	)

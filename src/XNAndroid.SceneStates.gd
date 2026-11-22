@@ -59,6 +59,7 @@ class CameraData:
 class LightData:
 	const MAX_INTENSITY := 2.0
 
+	var on : bool = true
 	var intensity: float = 0.25
 	## Pitch, -90..90. Negative points the light downward, positive points it upward.
 	var rot_x: float = 0.0
@@ -70,7 +71,9 @@ class LightData:
 	func sanitize() -> LightData:
 		intensity = clampf(SceneStates.finite_or(intensity, 0.25), 0.0, MAX_INTENSITY)
 		rot_x = clampf(SceneStates.finite_or(rot_x, 0.0), -90.0, 90.0)
-		rot_y = wrapf(SceneStates.finite_or(rot_y, 0.0), -180.0, 180.0)
+		rot_y = SceneStates.finite_or(rot_y, 0.0)
+		if absf(rot_y) > 180.0:  # only wrap when out of range, so +180 stays +180 (wrapf would turn it into -180)
+			rot_y = wrapf(rot_y, -180.0, 180.0)
 		shadow = clampf(SceneStates.finite_or(shadow, 0.0), 0.0, 1.0)
 		return self
 
@@ -78,10 +81,11 @@ class LightData:
 		return LightData.from_dict(to_dict())
 
 	func to_dict() -> Dictionary:
-		return {"intensity": intensity, "rot_x": rot_x, "rot_y": rot_y, "shadow": shadow}
+		return {"on" : on, "intensity": intensity, "rot_x": rot_x, "rot_y": rot_y, "shadow": shadow}
 
 	static func from_dict(d: Dictionary) -> LightData:
 		var l := LightData.new()
+		l.on = d.get("on")
 		l.intensity = SceneStates.as_float(d.get("intensity"), l.intensity)
 		l.rot_x = SceneStates.as_float(d.get("rot_x"), l.rot_x)
 		l.rot_y = SceneStates.as_float(d.get("rot_y"), l.rot_y)
