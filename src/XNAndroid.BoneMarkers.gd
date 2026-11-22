@@ -6,6 +6,7 @@ signal bone_selected(index: int)  # -1 = nothing selected
 
 @export var normal_color := Color(1, 1, 1, 0.55)
 @export var selected_color := Color(1.0, 0.75, 0.1, 1.0)
+@export var mirror_color := Color(0.3, 0.9, 1.0, 0.9)
 @export var draw_radius: float = 6.0
 @export var pick_radius: float = 36.0  ## px; generous so fingers can hit small bones
 @export var tap_slop: float = 12.0  ## max finger/mouse movement for a press+release to count as a tap
@@ -20,6 +21,10 @@ var markers_visible: bool = true:
 
 var input_enabled: bool = true  ## set false while popups are open
 var active: int = -1
+var mirror_bone: int = -1:
+	set(v):
+		mirror_bone = v
+		queue_redraw()
 var skeleton: Skeleton3D
 var camera: Camera3D
 
@@ -102,6 +107,9 @@ func _draw() -> void:
 	for i in _screen.size():
 		if _on[i] == 1 and i != active:
 			draw_circle(_screen[i], draw_radius, normal_color)
+	
+	if mirror_bone >= 0 and mirror_bone < _screen.size() and _on[mirror_bone] == 1:
+		draw_circle(_screen[mirror_bone], draw_radius * 1.3, mirror_color)
 	
 	# Selected marker last so it sits on top.
 	if active >= 0 and active < _screen.size() and _on[active] == 1:

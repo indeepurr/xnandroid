@@ -8,7 +8,9 @@ extends Node
 ##   Shift + left drag                 -> move
 ##   Shift + Ctrl + left drag          -> scale (always local)
 ##   G                                 -> toggle local / global (rotate + move)
+##   M                                 -> toggle bone mirroring (lShin <-> rShin, ...)
 ##   Ctrl+Z / Ctrl+Y                   -> undo / redo (one entry per drag)
+##   Alt+R                             -> reset the selected bone (and its mirror partner while mirroring)
 ##
 ## Several axes held at once:
 ##   rotate = one rotation about the combined axis, move = every held axis moves by the same
@@ -18,6 +20,7 @@ extends Node
 
 signal bone_changed(index: int)  # a bone's pose changed (-1 = everything, after reset_all)
 signal global_mode_changed(is_global: bool)
+signal mirror_mode_changed(enabled: bool)
 
 enum Mode { ROTATE, MOVE, SCALE }
 
@@ -35,6 +38,19 @@ var global_mode: bool = false:
 		global_mode = v
 		global_mode_changed.emit(v)
 
+## When on, every edit to a bone is mirrored onto its left/right partner (across the model's
+## X axis), and resets apply to both. Bones without a partner behave normally.
+var mirror_mode: bool = false:
+	set(v):
+		if v == mirror_mode:
+			return
+		mirror_mode = v
+		_refresh_mirror_marker()
+		mirror_mode_changed.emit(v)
+
+## Number of left/right bone pairs found on the current skeleton (handy for a UI hint).
+var mirror_pair_count: int = 0
+
 ## On-screen axis buttons can set these later (1 = held), exactly like holding the key.
 var touch_axes := Vector3.ZERO
 
@@ -43,7 +59,9 @@ var camera: Camera3D
 var markers: BoneMarkers
 
 var _drag_bone: int = -1
-var _drag_before: Array = []
+var _drag_bones: Array[int] = []  # dragged bone + its partner (captured even if mirroring is off, so toggling M mid-drag stays undoable)
+var _drag_before: Array = []  # one captured state per entry of _drag_bones
+var _mirror_of := PackedInt32Array()  # partner bone index per bone, -1 = none
 var _undo: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 
@@ -54,6 +72,10 @@ func setup(skel: Skeleton3D, cam: Camera3D, bone_markers: BoneMarkers) -> void:
 	_drag_bone = -1
 	_undo.clear()
 	_redo.clear()
+	_build_mirror_map()
+	if is_instance_valid(markers) and not markers.bone_selected.is_connected(_on_bone_selected):
+		markers.bone_selected.connect(_on_bone_selected)
+	_refresh_mirror_marker()
 
 ## Which axes are currently unlocked, as (x, y, z) flags of 0 or 1.
 func held_axes() -> Vector3:
@@ -86,15 +108,30 @@ func begin_edit(bone: int) -> void:
 	if not is_instance_valid(skeleton) or bone < 0 or bone >= skeleton.get_bone_count():
 		return
 	_drag_bone = bone
-	_drag_before = _capture(bone)
+	_drag_bones = _edit_set(bone)
+	_drag_before = []
+	for b in _drag_bones:
+		_drag_before.append(_capture(b))
 
 func end_edit() -> void:
 	if _drag_bone == -1:
 		return
-	var after := _capture(_drag_bone)
-	if after != _drag_before:
-		_push({"bone": _drag_bone, "before": _drag_before, "after": after})
+	# One undo entry covering every bone that actually changed (the bone and/or its partner).
+	var bones: Array[int] = []
+	var before: Array = []
+	var after: Array = []
+	for k in _drag_bones.size():
+		var b := _drag_bones[k]
+		var now := _capture(b)
+		if now != _drag_before[k]:
+			bones.append(b)
+			before.append(_drag_before[k])
+			after.append(now)
+	if not bones.is_empty():
+		_push({"bones": bones, "before": before, "after": after})
 	_drag_bone = -1
+	_drag_bones = []
+	_drag_before = []
 
 ## `axes` = (x, y, z) flags, `delta_px` = drag amount in pixels (sign = increase / decrease).
 func manipulate(bone: int, mode: Mode, axes: Vector3, delta_px: float) -> void:
@@ -109,17 +146,31 @@ func manipulate(bone: int, mode: Mode, axes: Vector3, delta_px: float) -> void:
 			_move(bone, axes, delta_px)
 		Mode.SCALE:
 			_scale(bone, axes, delta_px)
+	if mirror_mode:
+		var partner := get_mirror_bone(bone)
+		if partner >= 0:
+			_mirror_pose(bone, partner)
+			_changed(partner)
 	_changed(bone)
 
 func reset_bone(bone: int) -> void:
-	if not is_instance_valid(skeleton) or bone < 0:
+	if not is_instance_valid(skeleton) or bone < 0 or bone >= skeleton.get_bone_count():
 		return
-	var before := _capture(bone)
-	skeleton.reset_bone_pose(bone)
-	var after := _capture(bone)
-	if after != before:
-		_push({"bone": bone, "before": before, "after": after})
-	_changed(bone)
+	# While mirroring, the partner is reset too, as part of the same undo entry.
+	var bones: Array[int] = []
+	var before: Array = []
+	var after: Array = []
+	for b in _mirror_targets(bone):
+		var was := _capture(b)
+		skeleton.reset_bone_pose(b)
+		var now := _capture(b)
+		if now != was:
+			bones.append(b)
+			before.append(was)
+			after.append(now)
+		_changed(b)
+	if not bones.is_empty():
+		_push({"bones": bones, "before": before, "after": after})
 
 func reset_all() -> void:
 	if not is_instance_valid(skeleton):
@@ -133,14 +184,14 @@ func undo() -> void:
 	if _undo.is_empty():
 		return
 	var e: Dictionary = _undo.pop_back()
-	_restore(e["bone"], e["before"])
+	_restore_entry(e, "before")
 	_redo.append(e)
 
 func redo() -> void:
 	if _redo.is_empty():
 		return
 	var e: Dictionary = _redo.pop_back()
-	_restore(e["bone"], e["after"])
+	_restore_entry(e, "after")
 	_undo.append(e)
 
 # ---------------- input ----------------
@@ -178,7 +229,18 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				redo()
 		KEY_R:
 			if k.alt_pressed:
-				reset_bone(_active_bone())
+				if k.shift_pressed:
+					markers.select(-1)
+					reset_all()
+				else: reset_bone(_active_bone())
+			
+		KEY_M:
+			if k.alt_pressed: return
+			elif k.ctrl_pressed:
+				_mirror_bone_pose(_active_bone())
+			else:
+				mirror_mode = not mirror_mode
+				print("mirror mode: " + str(mirror_mode))
 
 # ---------------- transform math ----------------
 func _rotate(i: int, axes: Vector3, angle: float) -> void:
@@ -257,3 +319,134 @@ func _changed(i: int) -> void:
 	if is_instance_valid(markers):
 		markers.mark_dirty()
 	bone_changed.emit(i)
+
+func _restore_entry(entry: Dictionary, key: String) -> void:
+	var bones: Array = entry["bones"]
+	var states: Array = entry[key]
+	for k in bones.size():
+		_restore(bones[k], states[k])
+
+# ---------------- mirroring ----------------
+
+## The left/right partner of `bone`, or -1 if it has none.
+func get_mirror_bone(bone: int) -> int:
+	if bone < 0 or bone >= _mirror_of.size():
+		return -1
+	return _mirror_of[bone]
+
+## Bones a reset should touch: the bone, plus its partner while mirroring.
+func _mirror_targets(bone: int) -> Array[int]:
+	var t: Array[int] = [bone]
+	if mirror_mode:
+		var p := get_mirror_bone(bone)
+		if p >= 0:
+			t.append(p)
+	return t
+
+## Bones an edit might touch: the bone and its partner, whether or not mirroring is on.
+func _edit_set(bone: int) -> Array[int]:
+	var t: Array[int] = [bone]
+	var p := get_mirror_bone(bone)
+	if p >= 0:
+		t.append(p)
+	return t
+
+## Writes the mirror image of `src`'s pose onto `dst` (mirror plane = the model's YZ plane, x -> -x).
+## Position is mirrored as an offset from rest, rotation as (x, -y, -z, w), scale is copied.
+## Assumes rest rotations are identity, which is how the parser builds the skeleton.
+func _mirror_pose(src: int, dst: int) -> void:
+	var rest_src := skeleton.get_bone_rest(src)
+	var rest_dst := skeleton.get_bone_rest(dst)
+	var d := skeleton.get_bone_pose_position(src) - rest_src.origin
+	skeleton.set_bone_pose_position(dst, rest_dst.origin + Vector3(-d.x, d.y, d.z))
+	var q := skeleton.get_bone_pose_rotation(src)
+	skeleton.set_bone_pose_rotation(dst, Quaternion(q.x, -q.y, -q.z, q.w))
+	skeleton.set_bone_pose_scale(dst, skeleton.get_bone_pose_scale(src))
+	
+## One-shot: copies the mirror image of `bone`'s pose onto its partner (undoable). Works with mirroring off.
+func _mirror_bone_pose(bone: int) -> void:
+	var partner := get_mirror_bone(bone)
+	if not is_instance_valid(skeleton) or partner < 0:
+		return
+	var before := _capture(partner)
+	_mirror_pose(bone, partner)
+	var after := _capture(partner)
+	if after != before:
+		_push({"bones": [partner], "before": [before], "after": [after]})
+	_changed(partner)
+
+func _on_bone_selected(_index: int) -> void:
+	_refresh_mirror_marker()
+
+func _refresh_mirror_marker() -> void:
+	if not is_instance_valid(markers):
+		return
+	# set() so this still works if BoneMarkers doesn't have the mirror_bone property yet.
+	markers.set("mirror_bone", get_mirror_bone(_active_bone()) if mirror_mode else -1)
+
+func _build_mirror_map() -> void:
+	var count := skeleton.get_bone_count()
+	var index := {}
+	for i in count:
+		index[skeleton.get_bone_name(i)] = i
+	var raw := PackedInt32Array()
+	raw.resize(count)
+	raw.fill(-1)
+	for i in count:
+		for cand in _mirror_candidates(skeleton.get_bone_name(i)):
+			# A pairing only counts if the swapped name really exists on this skeleton.
+			if index.has(cand) and index[cand] != i:
+				raw[i] = index[cand]
+				break
+	# Keep only pairs that agree in both directions.
+	_mirror_of = PackedInt32Array()
+	_mirror_of.resize(count)
+	mirror_pair_count = 0
+	for i in count:
+		var j := raw[i]
+		_mirror_of[i] = j if (j >= 0 and raw[j] == i) else -1
+		if _mirror_of[i] > i:
+			mirror_pair_count += 1
+
+const _SEPARATORS := " _.-"
+
+## Possible partner names for `n`: Left/Right words, a lone L/R token ("Bip01 L Hand", "arm.L"),
+## a camelCase prefix ("lShldrBend") or a camelCase suffix ("ThumbL").
+static func _mirror_candidates(n: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for pair in [["Left", "Right"], ["left", "right"], ["LEFT", "RIGHT"]]:
+		if n.contains(pair[0]):
+			out.append(n.replace(pair[0], pair[1]))
+		if n.contains(pair[1]):
+			out.append(n.replace(pair[1], pair[0]))
+	var last := n.length() - 1
+	for i in n.length():
+		var c := n[i]
+		if _is_side_letter(c) and (i == 0 or _SEPARATORS.contains(n[i - 1])) and (i == last or _SEPARATORS.contains(n[i + 1])):
+			out.append(n.substr(0, i) + _other_side(c) + n.substr(i + 1))
+	if n.length() > 1:
+		if _is_side_letter(n[0]) and _is_upper(n[1]):
+			out.append(_other_side(n[0]) + n.substr(1))
+		if _is_side_letter(n[last]) and (_is_lower(n[last - 1]) or n[last - 1].is_valid_int()):
+			out.append(n.substr(0, last) + _other_side(n[last]))
+	return out
+
+static func _is_side_letter(c: String) -> bool:
+	return c == "l" or c == "r" or c == "L" or c == "R"
+
+static func _other_side(c: String) -> String:
+	match c:
+		"l":
+			return "r"
+		"r":
+			return "l"
+		"L":
+			return "R"
+		_:
+			return "L"
+
+static func _is_upper(c: String) -> bool:
+	return c != c.to_lower()
+
+static func _is_lower(c: String) -> bool:
+	return c != c.to_upper()

@@ -77,6 +77,7 @@ mouse_filter = 2
 script = ExtResource("6_3dxm6")
 normal_color = Color(1, 1, 1, 0.19607843)
 selected_color = Color(1, 0.7490196, 0.101960786, 0.47058824)
+mirror_color = Color(0.3019608, 0.9019608, 1, 0.47058824)
 draw_radius = 3.0
 metadata/_custom_type_script = "uid://diw7wykrkty46"
 
