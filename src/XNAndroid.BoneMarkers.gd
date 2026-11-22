@@ -4,8 +4,6 @@ extends Control
 
 signal bone_selected(index: int)  # -1 = nothing selected
 
-@onready var TXT_BoneName : RichTextLabel = $/root/Scene/UI/HBox/Center/TXT_BoneName
-
 @export var normal_color := Color(1, 1, 1, 0.55)
 @export var selected_color := Color(1.0, 0.75, 0.1, 1.0)
 @export var draw_radius: float = 6.0
@@ -53,11 +51,6 @@ func select(index: int) -> void:
 	active = index
 	queue_redraw()
 	bone_selected.emit(index)
-	
-	if not TXT_BoneName or not skeleton:
-		return
-	
-	TXT_BoneName.text = "None" if active == -1 else skeleton.get_bone_name(active)
 	
 ## Nearest on-screen bone within pick_radius of `pos`, or -1.
 func pick(pos: Vector2) -> int:

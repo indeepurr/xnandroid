@@ -14,6 +14,9 @@ extends Node3D
 @onready var POSE_Controller:PoseController = $UI/PoseController
 @onready var UI_BoneMarkers:BoneMarkers = $UI/BoneMarkers
 
+# Labels
+@onready var TXT_BoneName : RichTextLabel = $/root/Scene/UI/HBox/Center/TXT_BoneName
+
 # Variables
 
 # Temp
@@ -138,6 +141,8 @@ func _on_file_selected(path: String) -> void:
 	UI_BoneMarkers.setup(skeleton, $CamRig/Camera3D)
 	
 	UI_BoneMarkers.bone_selected.connect(func(bone):
+		TXT_BoneName.text = "None" if bone < 0 else skeleton.get_bone_name(bone)
+		
 		if bone < 0:
 			return
 		
