@@ -6,6 +6,9 @@
 [ext_resource type="Texture2D" uid="uid://caac3g6iyjci1" path="res://assets/dev/Prefab_Black.png" id="1_uu6xs"]
 [ext_resource type="Texture2D" uid="uid://cemvmxdk6dvbl" path="res://assets/outfit.png" id="5_fos0i"]
 [ext_resource type="Script" uid="uid://diw7wykrkty46" path="res://src/XNAndroid.BoneMarkers.gd" id="6_3dxm6"]
+[ext_resource type="Texture2D" uid="uid://bjv6q584e73yu" path="res://assets/light.png" id="6_trn2v"]
+[ext_resource type="Texture2D" uid="uid://t65dbkvfbwb" path="res://assets/scene.png" id="6_wkp8b"]
+[ext_resource type="Texture2D" uid="uid://dvfb4qsok11tu" path="res://assets/pose.png" id="7_20pc6"]
 [ext_resource type="Script" uid="uid://u1gwob13mook" path="res://src/XNAndroid.PoseController.gd" id="7_lgr22"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fos0i"]
@@ -114,16 +117,20 @@ layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 
-[node name="ExtraPopup" type="Control" parent="UI/HBox/Center" unique_id=595338700]
-visible = false
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/HBox/Center" unique_id=1060541077]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+alignment = 2
 
-[node name="PanelContainer" type="PanelContainer" parent="UI/HBox/Center/ExtraPopup" unique_id=935948804]
+[node name="ExtraPopup" type="Control" parent="UI/HBox/Center/VBoxContainer" unique_id=595338700]
+visible = false
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="UI/HBox/Center/VBoxContainer/ExtraPopup" unique_id=935948804]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -136,29 +143,194 @@ offset_right = 125.0
 grow_horizontal = 2
 grow_vertical = 0
 
-[node name="ScrollContainer" type="ScrollContainer" parent="UI/HBox/Center/ExtraPopup/PanelContainer" unique_id=1912324969]
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/HBox/Center/VBoxContainer/ExtraPopup/PanelContainer" unique_id=1912324969]
 layout_mode = 2
 
-[node name="extraParts" type="VBoxContainer" parent="UI/HBox/Center/ExtraPopup/PanelContainer/ScrollContainer" unique_id=1690719074]
+[node name="extraParts" type="VBoxContainer" parent="UI/HBox/Center/VBoxContainer/ExtraPopup/PanelContainer/ScrollContainer" unique_id=1690719074]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="CheckButton" type="CheckButton" parent="UI/HBox/Center/ExtraPopup/PanelContainer/ScrollContainer/extraParts" unique_id=1126298392]
+[node name="CheckButton" type="CheckButton" parent="UI/HBox/Center/VBoxContainer/ExtraPopup/PanelContainer/ScrollContainer/extraParts" unique_id=1126298392]
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text_overrun_behavior = 3
 
-[node name="TXT_BoneName" type="RichTextLabel" parent="UI/HBox/Center" unique_id=115128700]
+[node name="LightsPopup" type="Control" parent="UI/HBox/Center/VBoxContainer" unique_id=1598209929]
+visible = false
+layout_mode = 2
+
+[node name="PanelContainer2" type="PanelContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup" unique_id=232830250]
 layout_mode = 1
-anchors_preset = 12
+anchors_preset = 7
+anchor_left = 0.5
 anchor_top = 1.0
-anchor_right = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_top = -23.0
+offset_left = -175.0
+offset_top = -171.0
+offset_right = 175.0
 grow_horizontal = 2
 grow_vertical = 0
+size_flags_vertical = 3
+
+[node name="VBoxContainer3" type="VBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2" unique_id=784753675]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3" unique_id=423611297]
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer" unique_id=1614082313]
+layout_mode = 2
+
+[node name="TAB_Lights" type="TabBar" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer/PanelContainer" unique_id=1622102834]
+layout_mode = 2
+current_tab = 0
+tab_alignment = 1
+tab_count = 2
+tab_0/title = "Light A"
+tab_1/title = "Light B"
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3" unique_id=878474983]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=27660679]
+layout_mode = 2
+
+[node name="CheckBox" type="CheckBox" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer" unique_id=685933431]
+layout_mode = 2
+button_pressed = true
+text = "On"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=1708402839]
+layout_mode = 2
+alignment = 1
+
+[node name="Control" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer" unique_id=476871135]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="Label" type="Label" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer" unique_id=63332982]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Intensity"
+vertical_alignment = 1
+
+[node name="HSL_LightIntensity" type="HSlider" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer" unique_id=1758396284]
+layout_mode = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 3)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="Control2" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer" unique_id=32511299]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=1676981886]
+layout_mode = 2
+alignment = 1
+
+[node name="Control" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer2" unique_id=1449182759]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="Label" type="Label" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer2" unique_id=26247524]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "X"
+vertical_alignment = 1
+
+[node name="HSL_LightX" type="HSlider" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer2" unique_id=460043694]
+layout_mode = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 3)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="Control2" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer2" unique_id=127630543]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=1365242071]
+layout_mode = 2
+alignment = 1
+
+[node name="Control" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer3" unique_id=951525064]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="Label" type="Label" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer3" unique_id=2075483006]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Y"
+vertical_alignment = 1
+
+[node name="HSL_LightY" type="HSlider" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer3" unique_id=1878481460]
+layout_mode = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 3)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="Control2" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer3" unique_id=2079881302]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=1261428887]
+layout_mode = 2
+alignment = 1
+
+[node name="Control" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer4" unique_id=970339003]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="Label" type="Label" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer4" unique_id=421583273]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Shadow"
+vertical_alignment = 1
+
+[node name="HSL_LightShadow" type="HSlider" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer4" unique_id=1801422640]
+layout_mode = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 3)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="Control2" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer4" unique_id=1265303119]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+size_flags_stretch_ratio = 0.1
+
+[node name="Control" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2" unique_id=1715238531]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TXT_BoneName" type="RichTextLabel" parent="UI/HBox/Center/VBoxContainer" unique_id=115128700]
+layout_mode = 2
 mouse_filter = 2
 text = "None"
 fit_content = true
@@ -175,6 +347,30 @@ clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 4
 alignment = 1
+
+[node name="BTN_sceneSettings" type="Button" parent="UI/HBox/Footer/FooterOptions" unique_id=471204859]
+custom_minimum_size = Vector2(0, 4.14)
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+disabled = true
+text = "Scene"
+icon = ExtResource("6_wkp8b")
+
+[node name="BTN_posesModel" type="Button" parent="UI/HBox/Footer/FooterOptions" unique_id=1851606724]
+custom_minimum_size = Vector2(0, 4.14)
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+disabled = true
+text = "Poses"
+icon = ExtResource("7_20pc6")
+
+[node name="BTN_sceneLights" type="Button" parent="UI/HBox/Footer/FooterOptions" unique_id=1454147004]
+custom_minimum_size = Vector2(0, 4.14)
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+disabled = true
+text = "Lights"
+icon = ExtResource("6_trn2v")
 
 [node name="BTN_extrasModel" type="Button" parent="UI/HBox/Footer/FooterOptions" unique_id=426079076]
 custom_minimum_size = Vector2(0, 4.14)

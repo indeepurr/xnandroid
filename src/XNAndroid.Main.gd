@@ -4,18 +4,23 @@ extends Node3D
 
 # Buttons
 @onready var BTN_loadModel:Button = $UI/HBox/Header/HeaderOptions/BTN_loadModel
+@onready var BTN_sceneLights:Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
 @onready var BTN_extrasModel:Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 
 # Popups
-@onready var POPUP_extrasPop:Control = $UI/HBox/Center/ExtraPopup
-@onready var POPUP_extrasParts:VBoxContainer = $UI/HBox/Center/ExtraPopup/PanelContainer/ScrollContainer/extraParts
+@onready var POPUP_extrasPop:Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
+@onready var POPUP_extrasParts:VBoxContainer = $UI/HBox/Center/VBoxContainer/ExtraPopup/PanelContainer/ScrollContainer/extraParts
+@onready var POPUP_lightsPop:Control = $UI/HBox/Center/VBoxContainer/LightsPopup
+
+# Labels
+@onready var TXT_BoneName : RichTextLabel = $/root/Scene/UI/HBox/Center/VBoxContainer/TXT_BoneName
+
+# Sliders
+
 
 # Internal
 @onready var POSE_Controller:PoseController = $UI/PoseController
 @onready var UI_BoneMarkers:BoneMarkers = $UI/BoneMarkers
-
-# Labels
-@onready var TXT_BoneName : RichTextLabel = $/root/Scene/UI/HBox/Center/TXT_BoneName
 
 # Variables
 
@@ -57,6 +62,7 @@ func _setup_ui():
 	)
 	
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
+	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
 
 func _on_file_selected(path: String) -> void:
 	var parser := XPSParser.new()
@@ -152,6 +158,7 @@ func _on_file_selected(path: String) -> void:
 	POSE_Controller.setup(skeleton, $CamRig/Camera3D, UI_BoneMarkers)
 	
 	BTN_loadModel.disabled = true
+	BTN_sceneLights.disabled = false
 	BTN_extrasModel.disabled = false
 	
 	for child in get_children():
