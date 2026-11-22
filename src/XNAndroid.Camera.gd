@@ -1,3 +1,4 @@
+class_name CameraRig
 extends Node3D
 
 @export var camera : Camera3D
@@ -54,3 +55,21 @@ func _unhandled_input(event: InputEvent) -> void:
 func _apply() -> void:
 	rotation = Vector3(_pitch, _yaw, 0.0)
 	camera.position = Vector3(0.0, 0.0, _distance)
+
+## Snapshot of the view for SceneManager (degrees / world units).
+func capture_view() -> SceneStates.CameraData:
+	var v := SceneStates.CameraData.new()
+	v.target = global_position
+	v.yaw = rad_to_deg(_yaw)
+	v.pitch = rad_to_deg(_pitch)
+	v.distance = _distance
+	v.fov = camera.fov
+	return v
+
+func apply_view(v: SceneStates.CameraData) -> void:
+	global_position = v.target
+	_yaw = deg_to_rad(v.yaw)
+	_pitch = clampf(deg_to_rad(v.pitch), -PI / 2.0 + 0.01, PI / 2.0 - 0.01)
+	_distance = clampf(v.distance, min_distance, max_distance)
+	camera.fov = v.fov
+	_apply()

@@ -3,23 +3,29 @@ extends Node3D
 # UI related
 
 # Buttons
-@onready var BTN_loadModel:Button = $UI/HBox/Header/HeaderOptions/BTN_loadModel
-@onready var BTN_sceneLights:Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
-@onready var BTN_extrasModel:Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
+@onready var BTN_loadModel : Button = $UI/HBox/Header/HeaderOptions/BTN_loadModel
+@onready var BTN_sceneLights : Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
+@onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 
 # Popups
-@onready var POPUP_extrasPop:Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
-@onready var POPUP_extrasParts:VBoxContainer = $UI/HBox/Center/VBoxContainer/ExtraPopup/PanelContainer/ScrollContainer/extraParts
-@onready var POPUP_lightsPop:Control = $UI/HBox/Center/VBoxContainer/LightsPopup
+@onready var POPUP_extrasPop : Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
+@onready var POPUP_extrasParts : VBoxContainer = $UI/HBox/Center/VBoxContainer/ExtraPopup/PanelContainer/ScrollContainer/extraParts
+@onready var POPUP_lightsPop : Control = $UI/HBox/Center/VBoxContainer/LightsPopup
 
 # Labels
 @onready var TXT_BoneName : RichTextLabel = $/root/Scene/UI/HBox/Center/VBoxContainer/TXT_BoneName
 
 # Sliders
+@onready var SLIDER_lightIntensity : HSlider = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer/HSL_LightIntensity
+@onready var SLIDER_lightX : HSlider = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer2/HSL_LightX
+@onready var SLIDER_lightY : HSlider = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer3/HSL_LightY
 
+# Tabs
+@onready var TAB_Lights : TabBar = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer/PanelContainer/TAB_Lights
 
 # Internal
 @onready var POSE_Controller:PoseController = $UI/PoseController
+@onready var SCENE_Manager:SceneManager = $SceneManager
 @onready var UI_BoneMarkers:BoneMarkers = $UI/BoneMarkers
 
 # Variables
@@ -36,6 +42,7 @@ func _ready():
 
 # -----------------| CUSTOM FUNCTIONS |-----------------
 func _setup_ui():
+	## Buttons
 	BTN_loadModel.pressed.connect(func():
 		var fd := FileDialog.new()
 		fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -63,6 +70,40 @@ func _setup_ui():
 	
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
+	
+	## Tabs
+	TAB_Lights.tab_changed.connect(func(index):
+		var currLight := SCENE_Manager.get_light(index)
+		
+		if not SCENE_Manager._valid_light(index):
+			return
+		
+		SLIDER_lightIntensity.value = currLight.intensity
+		SLIDER_lightX.value = currLight.rot_x
+		SLIDER_lightY.value = currLight.rot_y
+	)
+	
+	## Sliders
+	SLIDER_lightIntensity.value_changed.connect(func(value):
+		if not SCENE_Manager._valid_light(TAB_Lights.current_tab):
+			return
+		
+		SCENE_Manager.set_light_intensity(TAB_Lights.current_tab, value)
+	)
+	
+	SLIDER_lightX.value_changed.connect(func(value):
+		if not SCENE_Manager._valid_light(TAB_Lights.current_tab):
+			return
+		
+		SCENE_Manager.set_light_rotation_x(TAB_Lights.current_tab, 90 * value)
+	)
+	
+	SLIDER_lightY.value_changed.connect(func(value):
+		if not SCENE_Manager._valid_light(TAB_Lights.current_tab):
+			return
+		
+		SCENE_Manager.set_light_rotation_y(TAB_Lights.current_tab, 180 * value)
+	)
 
 func _on_file_selected(path: String) -> void:
 	var parser := XPSParser.new()

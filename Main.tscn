@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://deba06qkxs64q" path="res://assets/add.png" id="1_glv2v"]
 [ext_resource type="Script" uid="uid://jmmhthnitil1" path="res://src/XNAndroid.Camera.gd" id="1_r0du0"]
 [ext_resource type="Texture2D" uid="uid://caac3g6iyjci1" path="res://assets/dev/Prefab_Black.png" id="1_uu6xs"]
+[ext_resource type="Script" uid="uid://cphqa3c6havuj" path="res://src/XNAndroid.SceneManager.gd" id="2_20pc6"]
 [ext_resource type="Texture2D" uid="uid://cemvmxdk6dvbl" path="res://assets/outfit.png" id="5_fos0i"]
 [ext_resource type="Script" uid="uid://diw7wykrkty46" path="res://src/XNAndroid.BoneMarkers.gd" id="6_3dxm6"]
 [ext_resource type="Texture2D" uid="uid://bjv6q584e73yu" path="res://assets/light.png" id="6_trn2v"]
@@ -31,6 +32,12 @@ bg_color = Color(0, 0, 0, 0.13725491)
 [node name="Scene" type="Node3D" unique_id=1311452741]
 script = ExtResource("1_cm0pq")
 
+[node name="SceneManager" type="Node" parent="." unique_id=9380404 node_paths=PackedStringArray("camera_rig", "lights")]
+script = ExtResource("2_20pc6")
+camera_rig = NodePath("../CamRig")
+lights = [NodePath("../Lighting/Front Sun"), NodePath("../Lighting/Back Sun")]
+metadata/_custom_type_script = "uid://cphqa3c6havuj"
+
 [node name="Lighting" type="Node3D" parent="." unique_id=1551817556]
 
 [node name="Front Sun" type="DirectionalLight3D" parent="Lighting" unique_id=851483179]
@@ -46,9 +53,13 @@ directional_shadow_mode = 0
 [node name="CamRig" type="Node3D" parent="." unique_id=947991568 node_paths=PackedStringArray("camera", "pose")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
 script = ExtResource("1_r0du0")
+rotate_speed = null
+pan_speed = 0.002
+zoom_step = null
+min_distance = null
+max_distance = null
 camera = NodePath("Camera3D")
 pose = NodePath("../UI/PoseController")
-pan_speed = 0.002
 
 [node name="Camera3D" type="Camera3D" parent="CamRig" unique_id=831956340]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
@@ -158,7 +169,6 @@ theme_override_font_sizes/font_size = 13
 text_overrun_behavior = 3
 
 [node name="LightsPopup" type="Control" parent="UI/HBox/Center/VBoxContainer" unique_id=1598209929]
-visible = false
 layout_mode = 2
 
 [node name="PanelContainer2" type="PanelContainer" parent="UI/HBox/Center/VBoxContainer/LightsPopup" unique_id=232830250]
@@ -256,9 +266,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 offset_transform_enabled = true
 offset_transform_position = Vector2(0, 3)
+min_value = -1.0
 max_value = 1.0
 step = 0.05
-value = 1.0
 
 [node name="Control2" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer2" unique_id=127630543]
 custom_minimum_size = Vector2(20, 0)
@@ -286,9 +296,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 offset_transform_enabled = true
 offset_transform_position = Vector2(0, 3)
+min_value = -1.0
 max_value = 1.0
 step = 0.05
-value = 1.0
 
 [node name="Control2" type="Control" parent="UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer3" unique_id=2079881302]
 custom_minimum_size = Vector2(20, 0)
