@@ -215,6 +215,8 @@ func _sync_light_sliders(index: int) -> void:
 	var l := SCENE_Manager.get_light(index)
 	if l == null:
 		return
+	
+	BTN_lightOn.set_pressed_no_signal(l.on)
 	SLIDER_lightIntensity.set_value_no_signal(l.intensity)
 	SLIDER_lightX.set_value_no_signal(l.rot_x / 90.0)  # sliders run -1..1, lights store degrees
 	SLIDER_lightY.set_value_no_signal(l.rot_y / 180.0)

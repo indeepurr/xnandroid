@@ -44,11 +44,13 @@ metadata/_custom_type_script = "uid://cphqa3c6havuj"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 light_energy = 0.25
 directional_shadow_mode = 0
+sky_mode = 1
 
 [node name="Back Sun" type="DirectionalLight3D" parent="Lighting" unique_id=188954299]
 transform = Transform3D(1, 0, 0, 0, -1, -8.742278e-08, 0, 8.742278e-08, -1, 0, 0, 0)
 light_energy = 0.25
 directional_shadow_mode = 0
+sky_mode = 1
 
 [node name="CamRig" type="Node3D" parent="." unique_id=947991568 node_paths=PackedStringArray("camera", "pose")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)

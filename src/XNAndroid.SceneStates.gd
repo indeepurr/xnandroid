@@ -85,7 +85,8 @@ class LightData:
 
 	static func from_dict(d: Dictionary) -> LightData:
 		var l := LightData.new()
-		l.on = d.get("on")
+		var on_value = d.get("on")
+		l.on = on_value if on_value is bool else l.on
 		l.intensity = SceneStates.as_float(d.get("intensity"), l.intensity)
 		l.rot_x = SceneStates.as_float(d.get("rot_x"), l.rot_x)
 		l.rot_y = SceneStates.as_float(d.get("rot_y"), l.rot_y)

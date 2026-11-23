@@ -156,7 +156,8 @@ func _read_light(node: DirectionalLight3D) -> SceneStates.LightData:
 	if not is_instance_valid(node):
 		return l
 	var dir := -node.global_basis.z
-	l.intensity = node.light_energy if node.visible else 0.0
+	l.on = node.visible
+	l.intensity = node.light_energy
 	l.rot_x = rad_to_deg(asin(clampf(dir.y, -1.0, 1.0)))
 	l.rot_y = rad_to_deg(atan2(-dir.x, -dir.z))
 	return l.sanitize()
