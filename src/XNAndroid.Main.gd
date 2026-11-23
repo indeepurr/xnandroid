@@ -35,6 +35,7 @@ extends Node3D
 var model : Node3D
 var skeleton : Skeleton3D
 var textures := {}
+var _tex_root := ""  # where textures are read from: a folder path, or an Android folder (tree) URI
 
 func _ready():
 	_setup_ui()
@@ -44,30 +45,7 @@ func _ready():
 # -----------------| CUSTOM FUNCTIONS |-----------------
 func _setup_ui():
 	## Buttons
-	BTN_loadModel.pressed.connect(func():
-		var fd := FileDialog.new()
-		fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		fd.access = FileDialog.ACCESS_FILESYSTEM
-		fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_CREATE_FOLDER, false)
-		fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_DELETE, false)
-		fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_FAVORITES, false)
-		fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_RECENT, false)
-		fd.set_flag(Window.FLAG_BORDERLESS, true)
-		fd.set_flag(Window.FLAG_RESIZE_DISABLED, true)
-		fd.use_native_dialog = true
-		fd.size = Vector2i( 336, 559 )
-		fd.position = Vector2i( -7, 0 )
-		fd.filters = PackedStringArray(["*.xps ; XNALara XPS", "*.mesh ; XNALara mesh"])
-		fd.title = "Select XPS file"
-		fd.content_scale_stretch = fd.CONTENT_SCALE_STRETCH_FRACTIONAL
-		fd.content_scale_factor = .7
-		
-		add_child(fd)
-		
-		fd.file_selected.connect(_on_file_selected)
-		fd.canceled.connect(func(): fd.queue_free())
-		fd.popup_centered()
-	)
+	BTN_loadModel.pressed.connect(func(): _open_picker(OS.get_name() == "Android"))
 	
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
@@ -110,7 +88,9 @@ func _setup_ui():
 		SCENE_Manager.set_light_rotation_y(TAB_Lights.current_tab, 180 * value)
 	)
 
-func _on_file_selected(path: String) -> void:
+func _on_file_selected(path: String, tex_root: String = "") -> void:
+	_tex_root = tex_root if not tex_root.is_empty() else path.get_base_dir()
+	
 	var parser := XPSParser.new()
 	var data := parser.parse(path)
 	
@@ -155,9 +135,11 @@ func _on_file_selected(path: String) -> void:
 			if idx > 0:
 				break
 			
-			var tex := XPSParser.load_texture(path.get_base_dir().path_join(mesh["textures"][idx]["file"]), textures)
+			var tex_path := _texture_path(mesh["textures"][idx]["file"])
+			var tex := XPSParser.load_texture(tex_path, textures)
 			
 			if tex == null:
+				print("texture not found: ", tex_path)
 				continue
 			
 			if idx == 0:
@@ -207,6 +189,61 @@ func _on_file_selected(path: String) -> void:
 	BTN_sceneLights.disabled = false
 	BTN_extrasModel.disabled = false
 	
+	for child in get_children():
+		if child is FileDialog:
+			child.queue_free()
+
+## Opens the system picker. On Android it picks a FOLDER, because Android only lets the app read
+## the files you grant it: the folder grant covers the model AND its textures.
+func _open_picker(pick_folder: bool, known_folder: String = "") -> void:
+	var fd := FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_DIR if pick_folder else FileDialog.FILE_MODE_OPEN_FILE
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_CREATE_FOLDER, false)
+	fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_DELETE, false)
+	fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_FAVORITES, false)
+	fd.set_customization_flag_enabled(FileDialog.CUSTOMIZATION_RECENT, false)
+	fd.set_flag(Window.FLAG_BORDERLESS, true)
+	fd.set_flag(Window.FLAG_RESIZE_DISABLED, true)
+	fd.use_native_dialog = true
+	fd.size = Vector2i( 336, 559 )
+	fd.position = Vector2i( -7, 0 )
+	fd.filters = PackedStringArray(["*.xps ; XNALara XPS", "*.mesh ; XNALara mesh"])
+	fd.title = "Select the model's folder" if pick_folder else "Select XPS file"
+	fd.content_scale_stretch = fd.CONTENT_SCALE_STRETCH_FRACTIONAL
+	fd.content_scale_factor = .7
+	
+	add_child(fd)
+	
+	if pick_folder:
+		fd.dir_selected.connect(_on_folder_selected)
+	else:
+		fd.file_selected.connect(func(path: String): _on_file_selected(path, known_folder))
+	fd.canceled.connect(func(): fd.queue_free())
+	fd.popup_centered()
+
+## Android: `dir` is a folder (tree) URI. Find the model inside it; if the folder can't be
+## listed, ask for the model file itself and still read the textures from this folder.
+func _on_folder_selected(dir: String) -> void:
+	_free_file_dialogs()
+	var model_name := ""
+	for f in DirAccess.get_files_at(dir):
+		if f.get_extension().to_lower() in ["xps", "mesh"]:
+			model_name = f
+			break
+	if model_name.is_empty():
+		print("Couldn't list the folder (or no .xps/.mesh in it); asking for the model file: ", dir)
+		_open_picker.call_deferred(false, dir)
+		return
+	_on_file_selected(dir + "#" + model_name, dir)
+
+## Where a texture named in the model lives: "treeUri#file" on Android, "folder/file" elsewhere.
+func _texture_path(file: String) -> String:
+	if _tex_root.begins_with("content://"):
+		return _tex_root + "#" + file
+	return _tex_root.path_join(file)
+
+func _free_file_dialogs() -> void:
 	for child in get_children():
 		if child is FileDialog:
 			child.queue_free()

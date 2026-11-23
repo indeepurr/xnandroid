@@ -37,6 +37,7 @@ var _last_fov: float = 0.0
 var _last_vp := Vector2.ZERO
 var _press_pos := Vector2.ZERO
 var _press_ms: int = 0
+var _multi_touch: bool = false  # a second finger touched during this press: it was a gesture, not a tap
 
 
 func setup(skel: Skeleton3D, cam: Camera3D) -> void:
@@ -123,15 +124,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not markers_visible or not input_enabled or not is_instance_valid(skeleton):
 		return
 	
+	# A second finger during a press means pinch / two-finger pan, so the press must not count as a tap.
+	if event is InputEventScreenTouch and event.pressed and event.index > 0:
+		_multi_touch = true
+	
 	# A tap selects; a drag is left alone for the camera rig (we never mark the event handled).
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_press_pos = event.position
 			_press_ms = Time.get_ticks_msec()
+			_multi_touch = false
 		else:
 			var moved : float = event.position.distance_to(_press_pos)
 			var elapsed := Time.get_ticks_msec() - _press_ms
-			if moved <= tap_slop and elapsed <= tap_max_ms:
+			if moved <= tap_slop and elapsed <= tap_max_ms and not _multi_touch:
 				var hit := pick(event.position)
 				if hit != -1 or deselect_on_empty_tap:
 					select(hit)

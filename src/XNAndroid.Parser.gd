@@ -317,32 +317,83 @@ static func build_skeleton(bones: Dictionary) -> Skeleton3D:
 
 
 ## Cached, aspect-correct downscale. `cache` maps full path -> Texture2D (or null).
+## `path` can be a normal path OR an Android URI ("content://..." or "treeUri#file.png"):
+## the file is read with FileAccess and decoded from bytes, because Image.load_from_file()
+## doesn't understand URIs.
 static func load_texture(path: String, cache: Dictionary, max_dim: int = 1024) -> Texture2D:
 	if cache.has(path):
 		return cache[path]
 	
 	var tex: Texture2D = null
+	var img := _load_image(path)
+	if img == null:
+		img = _load_image(_lowercase_file_name(path))  # Windows-made packs often differ in letter case
 	
-	if FileAccess.file_exists(path):
-		var img := Image.load_from_file(path)
-		if img:
-			if img.is_compressed():
-				img.decompress()  # compressed images can't be resized
+	if img:
+		if img.is_compressed():
+			img.decompress()  # compressed images can't be resized
+		
+		var w := img.get_width()
+		var h := img.get_height()
+		
+		var longest := maxi(w, h)
+		
+		if longest > max_dim:
+			var s := float(max_dim) / float(longest)
+			img.resize(maxi(1, int(w * s)), maxi(1, int(h * s)), Image.INTERPOLATE_BILINEAR)
 			
-			var w := img.get_width()
-			var h := img.get_height()
-			
-			var longest := maxi(w, h)
-			
-			if longest > max_dim:
-				var s := float(max_dim) / float(longest)
-				img.resize(maxi(1, int(w * s)), maxi(1, int(h * s)), Image.INTERPOLATE_BILINEAR)
-				
-			img.generate_mipmaps()
-			
-			var has_alpha := img.detect_alpha() != Image.ALPHA_NONE
-			tex = ImageTexture.create_from_image(img)
-			tex.set_meta("has_alpha", has_alpha)
+		img.generate_mipmaps()
+		
+		var has_alpha := img.detect_alpha() != Image.ALPHA_NONE
+		tex = ImageTexture.create_from_image(img)
+		tex.set_meta("has_alpha", has_alpha)
 	
 	cache[path] = tex
 	return tex
+
+
+static func _load_image(path: String) -> Image:
+	if path.is_empty():
+		return null
+	# Plain paths: skip quietly when the file isn't there. URIs can't be checked, so just try.
+	if not path.begins_with("content://") and not FileAccess.file_exists(path):
+		return null
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.size() < 4:
+		return null
+	
+	# Decide the format from the file's first bytes; fall back to the extension (TGA has no magic number).
+	var kind := path.get_extension().to_lower()
+	if bytes[0] == 0x89 and bytes[1] == 0x50 and bytes[2] == 0x4E and bytes[3] == 0x47:
+		kind = "png"
+	elif bytes[0] == 0xFF and bytes[1] == 0xD8:
+		kind = "jpg"
+	elif bytes[0] == 0x44 and bytes[1] == 0x44 and bytes[2] == 0x53 and bytes[3] == 0x20:
+		kind = "dds"  # "DDS "
+	elif bytes[0] == 0x52 and bytes[1] == 0x49 and bytes[2] == 0x46 and bytes[3] == 0x46:
+		kind = "webp"  # "RIFF"
+	elif bytes[0] == 0x42 and bytes[1] == 0x4D:
+		kind = "bmp"
+	
+	var img := Image.new()
+	var err := ERR_FILE_UNRECOGNIZED
+	match kind:
+		"png":
+			err = img.load_png_from_buffer(bytes)
+		"jpg", "jpeg":
+			err = img.load_jpg_from_buffer(bytes)
+		"tga":
+			err = img.load_tga_from_buffer(bytes)
+		"webp":
+			err = img.load_webp_from_buffer(bytes)
+		"bmp":
+			err = img.load_bmp_from_buffer(bytes)
+		"dds":
+			err = img.load_dds_from_buffer(bytes)
+	return img if err == OK else null
+
+
+## Same path with the file name in lower case ("Textures/Body.PNG" -> "Textures/body.png").
+static func _lowercase_file_name(path: String) -> String:
+	var cut := maxi(path.rfind("/"), path.rfind("#"))
+	return path.substr(0, cut + 1) + path.substr(cut + 1).to_lower()

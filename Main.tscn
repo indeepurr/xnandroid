@@ -57,11 +57,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
 script = ExtResource("1_r0du0")
 camera = NodePath("Camera3D")
 pose = NodePath("../UI/PoseController")
-rotate_speed = null
 pan_speed = 0.002
-zoom_step = null
-min_distance = null
-max_distance = null
 
 [node name="Camera3D" type="Camera3D" parent="CamRig" unique_id=831956340]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
