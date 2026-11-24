@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://daud03msmm71i" path="res://assets/rotate.png" id="7_5vvyt"]
 [ext_resource type="Texture2D" uid="uid://dvfb4qsok11tu" path="res://assets/pose.png" id="7_20pc6"]
 [ext_resource type="Script" uid="uid://u1gwob13mook" path="res://src/XNAndroid.PoseController.gd" id="7_lgr22"]
+[ext_resource type="Texture2D" uid="uid://beye1fkcrul4a" path="res://assets/mirror.png" id="8_c6i3y"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fos0i"]
 
@@ -99,7 +100,6 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 30.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -368,6 +368,26 @@ layout_mode = 2
 theme_override_constants/icon_max_width = 70
 disabled = true
 icon = ExtResource("7_5vvyt")
+icon_alignment = 1
+
+[node name="BTN_BoneAxis" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=2005989808]
+custom_minimum_size = Vector2(78, 78)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 70
+theme_override_font_sizes/font_size = 25
+disabled = true
+text = "ALL"
+icon_alignment = 1
+
+[node name="BTN_BoneMirror" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=1423825215]
+custom_minimum_size = Vector2(78, 78)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 55
+disabled = true
+icon = ExtResource("8_c6i3y")
+icon_alignment = 1
 
 [node name="Footer" type="PanelContainer" parent="UI/HBox" unique_id=91991528]
 layout_mode = 2

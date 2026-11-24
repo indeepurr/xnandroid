@@ -8,6 +8,8 @@ extends Node3D
 @onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 @onready var BTN_lightOn : CheckBox = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer/BTN_LightOn
 @onready var BTN_boneMode : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMode
+@onready var BTN_boneAxis : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneAxis
+@onready var BTN_boneMirror : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMirror
 
 # Popups
 @onready var POPUP_extrasPop : Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
@@ -189,6 +191,9 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 	BTN_loadModel.disabled = true
 	BTN_sceneLights.disabled = false
 	BTN_extrasModel.disabled = false
+	BTN_boneMode.disabled = false
+	BTN_boneAxis.disabled = false
+	BTN_boneMirror.disabled = false
 	
 	for child in get_children():
 		if child is FileDialog:
