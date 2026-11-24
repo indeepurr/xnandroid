@@ -13,6 +13,9 @@
 [ext_resource type="Texture2D" uid="uid://dvfb4qsok11tu" path="res://assets/pose.png" id="7_20pc6"]
 [ext_resource type="Script" uid="uid://u1gwob13mook" path="res://src/XNAndroid.PoseController.gd" id="7_lgr22"]
 [ext_resource type="Texture2D" uid="uid://beye1fkcrul4a" path="res://assets/mirror.png" id="8_c6i3y"]
+[ext_resource type="Texture2D" uid="uid://bm0k6eunr8ao5" path="res://assets/undo.png" id="9_c2ibq"]
+[ext_resource type="Texture2D" uid="uid://costijy5skmsx" path="res://assets/redo.png" id="10_j4qnp"]
+[ext_resource type="Texture2D" uid="uid://c5h5lhh8dhp7d" path="res://assets/bones.png" id="11_fpfj3"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fos0i"]
 
@@ -354,39 +357,127 @@ vertical_alignment = 1
 
 [node name="CenterContainer" type="CenterContainer" parent="UI/HBox/Center" unique_id=92476385]
 layout_mode = 1
-anchors_preset = 9
+anchors_preset = 2
+anchor_top = 1.0
 anchor_bottom = 1.0
-offset_right = 78.0
-grow_vertical = 2
+offset_top = -281.0
+offset_right = 53.0
+grow_vertical = 0
+mouse_filter = 0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UI/HBox/Center/CenterContainer" unique_id=1623563586]
 layout_mode = 2
+alignment = 1
 
 [node name="BTN_BoneMode" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=750302949]
+custom_minimum_size = Vector2(53, 53)
 clip_contents = true
 layout_mode = 2
-theme_override_constants/icon_max_width = 70
+theme_override_constants/icon_max_width = 45
 disabled = true
 icon = ExtResource("7_5vvyt")
 icon_alignment = 1
 
 [node name="BTN_BoneAxis" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=2005989808]
-custom_minimum_size = Vector2(78, 78)
+custom_minimum_size = Vector2(53, 53)
 clip_contents = true
 layout_mode = 2
-theme_override_constants/icon_max_width = 70
-theme_override_font_sizes/font_size = 25
+theme_override_font_sizes/font_size = 18
 disabled = true
 text = "ALL"
 icon_alignment = 1
 
 [node name="BTN_BoneMirror" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=1423825215]
-custom_minimum_size = Vector2(78, 78)
+custom_minimum_size = Vector2(53, 53)
 clip_contents = true
 layout_mode = 2
-theme_override_constants/icon_max_width = 55
+theme_override_constants/icon_max_width = 35
 disabled = true
 icon = ExtResource("8_c6i3y")
+icon_alignment = 1
+
+[node name="BTN_BoneUndo" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=1393076541]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 35
+disabled = true
+icon = ExtResource("9_c2ibq")
+icon_alignment = 1
+
+[node name="BTN_BoneRedo" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=290974953]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 35
+disabled = true
+icon = ExtResource("10_j4qnp")
+icon_alignment = 1
+
+[node name="CenterContainer2" type="CenterContainer" parent="UI/HBox/Center" unique_id=1472790766]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -53.0
+offset_top = -281.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/HBox/Center/CenterContainer2" unique_id=1974611474]
+layout_mode = 2
+alignment = 1
+
+[node name="BTN_BoneShow" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=489165011]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 45
+disabled = true
+icon = ExtResource("11_fpfj3")
+icon_alignment = 1
+
+[node name="BTN_BoneAxis" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=1873021607]
+visible = false
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+disabled = true
+text = "ALL"
+icon_alignment = 1
+
+[node name="BTN_BoneMirror" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=1162227590]
+visible = false
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 35
+disabled = true
+icon = ExtResource("8_c6i3y")
+icon_alignment = 1
+
+[node name="BTN_BoneUndo" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=298648191]
+visible = false
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 35
+disabled = true
+icon = ExtResource("9_c2ibq")
+icon_alignment = 1
+
+[node name="BTN_BoneRedo" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=202799105]
+visible = false
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 35
+disabled = true
+icon = ExtResource("10_j4qnp")
 icon_alignment = 1
 
 [node name="Footer" type="PanelContainer" parent="UI/HBox" unique_id=91991528]

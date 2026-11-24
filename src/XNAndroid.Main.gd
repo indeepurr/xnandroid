@@ -10,6 +10,8 @@ extends Node3D
 @onready var BTN_boneMode : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMode
 @onready var BTN_boneAxis : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneAxis
 @onready var BTN_boneMirror : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMirror
+@onready var BTN_boneUndo : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneUndo
+@onready var BTN_boneRedo : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneRedo
 
 # Popups
 @onready var POPUP_extrasPop : Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
@@ -33,6 +35,9 @@ extends Node3D
 @onready var UI_BoneMarkers:BoneMarkers = $UI/BoneMarkers
 
 # Variables
+const MODE_ICONS := [preload("res://assets/rotate.png"), preload("res://assets/move.png"), preload("res://assets/scale.png")]  # indexed by PoseController.Mode
+const BONE_AXES := [["X", Vector3(1, 0, 0)], ["Y", Vector3(0, 1, 0)], ["Z", Vector3(0, 0, 1)], ["ALL", Vector3(1, 1, 1)]]
+var _axis_index := 3  # starts on ALL
 
 # Temp
 var model : Node3D
@@ -45,6 +50,10 @@ func _ready():
 
 # func _process(delta: float) -> void:
 
+func bone_changed( index ):
+	BTN_boneUndo.disabled = POSE_Controller._undo.is_empty()
+	BTN_boneRedo.disabled = POSE_Controller._redo.is_empty()
+
 # -----------------| CUSTOM FUNCTIONS |-----------------
 func _setup_ui():
 	## Buttons
@@ -52,6 +61,28 @@ func _setup_ui():
 	
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
+	
+	## Bone tools (phone)
+	BTN_boneMode.pressed.connect(func():
+		POSE_Controller.touch_mode = ((POSE_Controller.touch_mode + 1) % MODE_ICONS.size()) as PoseController.Mode
+		_sync_bone_mode()
+	)
+	BTN_boneAxis.pressed.connect(func():
+		_axis_index = (_axis_index + 1) % BONE_AXES.size()
+		_sync_bone_axis()
+	)
+	BTN_boneMirror.toggle_mode = true
+	BTN_boneMirror.toggled.connect(func(on: bool): POSE_Controller.mirror_mode = on)
+	POSE_Controller.mirror_mode_changed.connect(func(on: bool): BTN_boneMirror.set_pressed_no_signal(on))  # keeps it in sync with the M key
+	_sync_bone_mode()
+	_sync_bone_axis()
+	
+	## Tapping the bone name deselects (safeguard for when the camera is too close to tap empty space)
+	TXT_BoneName.mouse_filter = Control.MOUSE_FILTER_STOP
+	TXT_BoneName.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			UI_BoneMarkers.select(-1)
+	)
 	
 	## Tabs
 	TAB_Lights.tab_changed.connect(_sync_light_sliders)
@@ -90,6 +121,13 @@ func _setup_ui():
 		
 		SCENE_Manager.set_light_rotation_y(TAB_Lights.current_tab, 180 * value)
 	)
+
+func _sync_bone_mode() -> void:
+	BTN_boneMode.icon = MODE_ICONS[POSE_Controller.touch_mode]
+
+func _sync_bone_axis() -> void:
+	BTN_boneAxis.text = BONE_AXES[_axis_index][0]
+	POSE_Controller.touch_axes = BONE_AXES[_axis_index][1]
 
 func _on_file_selected(path: String, tex_root: String = "") -> void:
 	_tex_root = tex_root if not tex_root.is_empty() else path.get_base_dir()
@@ -194,6 +232,7 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 	BTN_boneMode.disabled = false
 	BTN_boneAxis.disabled = false
 	BTN_boneMirror.disabled = false
+	BTN_boneUndo.disabled = false
 	
 	for child in get_children():
 		if child is FileDialog:
@@ -202,6 +241,11 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 ## Opens the system picker. On Android it picks a FOLDER, because Android only lets the app read
 ## the files you grant it: the folder grant covers the model AND its textures.
 func _open_picker(pick_folder: bool, known_folder: String = "") -> void:
+	# Android second step: open the system picker already inside the folder that was just granted.
+	if not pick_folder and known_folder.begins_with("content://"):
+		_open_android_file_picker(known_folder)
+		return
+	
 	var fd := FileDialog.new()
 	fd.file_mode = FileDialog.FILE_MODE_OPEN_DIR if pick_folder else FileDialog.FILE_MODE_OPEN_FILE
 	fd.access = FileDialog.ACCESS_FILESYSTEM
@@ -228,12 +272,39 @@ func _open_picker(pick_folder: bool, known_folder: String = "") -> void:
 	fd.canceled.connect(func(): fd.queue_free())
 	fd.popup_centered()
 
+## Android: opens the system file picker at `tree_uri` (the folder picked a moment ago).
+## Goes through DisplayServer directly because FileDialog would mangle a content:// start path.
+func _open_android_file_picker(tree_uri: String) -> void:
+	DisplayServer.file_dialog_show(
+		"Select the model file",
+		_tree_to_document_uri(tree_uri),
+		"", false,
+		DisplayServer.FILE_DIALOG_MODE_OPEN_FILE,
+		PackedStringArray(["*.xps", "*.mesh"]),
+		func(ok: bool, paths: PackedStringArray, _filter: int):
+			if ok and not paths.is_empty():
+				_on_file_selected(paths[0], tree_uri)
+	)
+
+## The picker's start location must be a document URI, but a folder grant gives a tree URI
+## (".../tree/<id>" or ".../tree/<id>/document/<id>"). Same authority, different path.
+func _tree_to_document_uri(tree_uri: String) -> String:
+	var i := tree_uri.find("/tree/")
+	if i == -1:
+		return tree_uri
+	var rest := tree_uri.substr(i + 6)
+	var j := rest.find("/document/")
+	var doc_id := rest.substr(j + 10) if j != -1 else rest
+	return tree_uri.substr(0, i) + "/document/" + doc_id
+
 ## Android: `dir` is a folder (tree) URI. Find the model inside it; if the folder can't be
 ## listed, ask for the model file itself and still read the textures from this folder.
 func _on_folder_selected(dir: String) -> void:
 	_free_file_dialogs()
 	var model_name := ""
-	for f in DirAccess.get_files_at(dir):
+	var files := _list_tree_files(dir) if dir.begins_with("content://") else DirAccess.get_files_at(dir)
+	print("Folder listing found %d file(s) in: %s" % [files.size(), dir])
+	for f in files:
 		if f.get_extension().to_lower() in ["xps", "mesh"]:
 			model_name = f
 			break
@@ -242,6 +313,29 @@ func _on_folder_selected(dir: String) -> void:
 		_open_picker.call_deferred(false, dir)
 		return
 	_on_file_selected(dir + "#" + model_name, dir)
+
+## Lists the file names inside an Android folder (tree) URI. Godot can READ files through
+## "treeUri#file" but has no directory listing for content:// URIs (DirAccess returns nothing),
+## so this asks Android's DocumentsContract directly. Returns an empty list if anything fails,
+## which makes the caller fall back to the second picker.
+func _list_tree_files(tree_uri: String) -> PackedStringArray:
+	var names := PackedStringArray()
+	if not Engine.has_singleton("AndroidRuntime"):
+		return names
+	var runtime = Engine.get_singleton("AndroidRuntime")
+	var contract = JavaClassWrapper.wrap("android.provider.DocumentsContract")
+	var uri_class = JavaClassWrapper.wrap("android.net.Uri")
+	if contract == null or uri_class == null:
+		return names
+	var tree = uri_class.parse(tree_uri)
+	var children = contract.buildChildDocumentsUriUsingTree(tree, contract.getTreeDocumentId(tree))
+	var cursor = runtime.getActivity().getContentResolver().query(children, PackedStringArray(["_display_name"]), "", PackedStringArray(), "_display_name", null)  # 6-arg overload: selection, selectionArgs, sortOrder, CancellationSignal. Folders ignore selection; the bridge rejects null for String params.
+	if cursor == null:
+		return names
+	while cursor.moveToNext():
+		names.append(cursor.getString(0))
+	cursor.close()
+	return names
 
 ## Where a texture named in the model lives: "treeUri#file" on Android, "folder/file" elsewhere.
 func _texture_path(file: String) -> String:

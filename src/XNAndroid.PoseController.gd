@@ -4,7 +4,7 @@ extends Node
 ## Poses the active bone (BoneMarkers.active) by dragging while holding Q / W / E.
 ##
 ##   Hold Q / W / E (any combination)  -> unlock X / Y / Z
-##   Left drag                         -> rotate (default)
+##   Left drag                         -> touch_mode (rotate by default; the phone's mode button changes it)
 ##   Shift + left drag                 -> move
 ##   Shift + Ctrl + left drag          -> scale (always local)
 ##   G                                 -> toggle local / global (rotate + move)
@@ -46,13 +46,22 @@ var mirror_mode: bool = false:
 			return
 		mirror_mode = v
 		_refresh_mirror_marker()
+		if v:
+			_mirror_bone_pose(_active_bone())  # turning it on also mirrors the selected bone right away
 		mirror_mode_changed.emit(v)
 
 ## Number of left/right bone pairs found on the current skeleton (handy for a UI hint).
 var mirror_pair_count: int = 0
 
-## On-screen axis buttons can set these later (1 = held), exactly like holding the key.
+## On-screen axis button sets this (1 = held), exactly like holding the key.
 var touch_axes := Vector3.ZERO
+
+## Drag mode when no modifier key is held. The on-screen mode button sets this; Shift / Shift+Ctrl still override it.
+var touch_mode: Mode = Mode.ROTATE
+
+## A touch has to move this many pixels before it starts posing, so tapping another bone to select it
+## doesn't nudge the current one. Mouse drags aren't affected.
+@export var touch_drag_slop: float = 12.0
 
 var skeleton: Skeleton3D
 var camera: Camera3D
@@ -61,6 +70,8 @@ var markers: BoneMarkers
 var _drag_bone: int = -1
 var _drag_bones: Array[int] = []  # dragged bone + its partner (captured even if mirroring is off, so toggling M mid-drag stays undoable)
 var _drag_before: Array = []  # one captured state per entry of _drag_bones
+var _press_pos := Vector2.ZERO
+var _drag_live: bool = true  # false while a touch is still inside touch_drag_slop
 var _mirror_of := PackedInt32Array()  # partner bone index per bone, -1 = none
 var _undo: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
@@ -198,15 +209,28 @@ func redo() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_instance_valid(skeleton):
 		return
+	if event is InputEventScreenTouch:
+		# A second finger means pinch / two-finger pan: stop posing (what was done is kept as one undo step).
+		# Later motion of the first finger is ignored because no drag is active any more.
+		if event.pressed and event.index > 0:
+			end_edit()
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			_press_pos = event.position
+			_drag_live = event.device != InputEvent.DEVICE_ID_EMULATION  # emulated from touch -> needs the slop first
 			if is_manipulating():
 				begin_edit(_active_bone())
 		else:
 			end_edit()
 	elif event is InputEventMouseMotion and _drag_bone != -1 and (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
+		if not _drag_live:
+			if event.position.distance_to(_press_pos) < touch_drag_slop:
+				return
+			_drag_live = true
+			return  # posing starts from the next motion event
 		# Modifiers are read on every motion event, so you can switch mode mid-drag.
-		var mode := Mode.ROTATE
+		var mode: Mode = touch_mode
 		if event.shift_pressed:
 			mode = Mode.SCALE if event.ctrl_pressed else Mode.MOVE
 		manipulate(_drag_bone, mode, held_axes(), event.relative.dot(drag_direction))
