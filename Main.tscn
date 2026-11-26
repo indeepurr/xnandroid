@@ -11,7 +11,9 @@
 [ext_resource type="Texture2D" uid="uid://t65dbkvfbwb" path="res://assets/scene.png" id="6_wkp8b"]
 [ext_resource type="Texture2D" uid="uid://daud03msmm71i" path="res://assets/rotate.png" id="7_5vvyt"]
 [ext_resource type="Texture2D" uid="uid://dvfb4qsok11tu" path="res://assets/pose.png" id="7_20pc6"]
+[ext_resource type="Texture2D" uid="uid://d151p0oir8y2i" path="res://assets/subtract.png" id="7_kjvhd"]
 [ext_resource type="Script" uid="uid://u1gwob13mook" path="res://src/XNAndroid.PoseController.gd" id="7_lgr22"]
+[ext_resource type="Texture2D" uid="uid://b7rud5fkvybv2" path="res://assets/model.png" id="7_sc1dx"]
 [ext_resource type="Texture2D" uid="uid://beye1fkcrul4a" path="res://assets/mirror.png" id="8_c6i3y"]
 [ext_resource type="Texture2D" uid="uid://bm0k6eunr8ao5" path="res://assets/undo.png" id="9_c2ibq"]
 [ext_resource type="Texture2D" uid="uid://costijy5skmsx" path="res://assets/redo.png" id="10_j4qnp"]
@@ -124,6 +126,25 @@ layout_mode = 2
 theme_override_constants/icon_max_width = 20
 text = "Load"
 icon = ExtResource("1_glv2v")
+
+[node name="BTN_removeModel" type="Button" parent="UI/HBox/Header/HeaderOptions" unique_id=431897136]
+custom_minimum_size = Vector2(0, 4.14)
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+disabled = true
+text = "Remove"
+icon = ExtResource("7_kjvhd")
+
+[node name="MENU_sceneModels" type="MenuButton" parent="UI/HBox/Header/HeaderOptions" unique_id=1120627057]
+layout_mode = 2
+theme_override_constants/icon_max_width = 20
+text = "No models loaded"
+icon = ExtResource("7_sc1dx")
+flat = false
+item_count = 1
+popup/item_0/text = "Model 0"
+popup/item_0/icon = ExtResource("7_sc1dx")
+popup/item_0/id = 0
 
 [node name="TXT_BoneName" type="RichTextLabel" parent="UI/HBox" unique_id=115128700]
 layout_mode = 2

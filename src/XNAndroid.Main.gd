@@ -4,6 +4,8 @@ extends Node3D
 
 # Buttons
 @onready var BTN_loadModel : Button = $UI/HBox/Header/HeaderOptions/BTN_loadModel
+@onready var BTN_removeModel : Button = $UI/HBox/Header/HeaderOptions/BTN_removeModel
+@onready var BTN_sceneModels : Button = $UI/HBox/Header/HeaderOptions/MENU_sceneModels
 @onready var BTN_sceneLights : Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
 @onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 @onready var BTN_lightOn : CheckBox = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer/BTN_LightOn
@@ -118,6 +120,8 @@ static func _fmt(x: float) -> String:
 func _setup_ui():
 	## Buttons
 	BTN_loadModel.pressed.connect(func(): _open_picker(OS.get_name() == "Android"))
+	
+	BTN_sceneModels.get_popup().add_theme_constant_override("icon_max_width", 20)
 	
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
