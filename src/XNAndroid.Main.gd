@@ -17,6 +17,7 @@ extends Node3D
 @onready var BTN_boneUndo : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneUndo
 @onready var BTN_boneRedo : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneRedo
 @onready var BTN_boneShow : Button = $UI/HBox/Center/CenterContainer2/VBoxContainer/BTN_BoneShow
+@onready var BTN_boneReset : Button = $UI/HBox/Center/CenterContainer2/VBoxContainer/BTN_BoneReset
 
 # Popups
 @onready var POPUP_extrasPop : Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
@@ -34,6 +35,9 @@ extends Node3D
 
 # Tabs
 @onready var TAB_Lights : TabBar = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer/PanelContainer/TAB_Lights
+
+# Confirmation dialogs
+@onready var CD_boneReset : ConfirmationDialog = $UI/CD_boneReset
 
 # Internal
 @onready var POSE_Controller:PoseController = $UI/PoseController
@@ -118,10 +122,18 @@ static func _fmt(x: float) -> String:
 
 # -----------------| CUSTOM FUNCTIONS |-----------------
 func _setup_ui():
+	
 	## Buttons
 	BTN_loadModel.pressed.connect(func(): _open_picker(OS.get_name() == "Android"))
 	
 	BTN_sceneModels.get_popup().add_theme_constant_override("icon_max_width", 20)
+	
+	BTN_boneReset.pressed.connect(func():
+		if UI_BoneMarkers.active == -1:
+			CD_boneReset.popup_centered()
+		else:
+			POSE_Controller.reset_bone(UI_BoneMarkers.active)
+	)
 	
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
@@ -187,6 +199,11 @@ func _setup_ui():
 			return
 		
 		SCENE_Manager.set_light_rotation_y(TAB_Lights.current_tab, 180 * value)
+	)
+	
+	## Confirmation dialogs
+	CD_boneReset.confirmed.connect(func():
+		POSE_Controller.reset_all()
 	)
 
 func _sync_bone_mode() -> void:
@@ -301,6 +318,7 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 	BTN_boneShow.pressed.connect(func():
 		UI_BoneMarkers.markers_visible = not UI_BoneMarkers.markers_visible
 	)
+	BTN_boneReset.disabled = false
 	_refresh_history_buttons()
 	
 	for child in get_children():
