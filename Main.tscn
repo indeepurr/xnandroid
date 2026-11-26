@@ -18,6 +18,7 @@
 [ext_resource type="Texture2D" uid="uid://bm0k6eunr8ao5" path="res://assets/undo.png" id="9_c2ibq"]
 [ext_resource type="Texture2D" uid="uid://costijy5skmsx" path="res://assets/redo.png" id="10_j4qnp"]
 [ext_resource type="Texture2D" uid="uid://c5h5lhh8dhp7d" path="res://assets/bones.png" id="11_fpfj3"]
+[ext_resource type="Texture2D" uid="uid://cifgqakn8e8wx" path="res://assets/reset.png" id="14_5tuhn"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fos0i"]
 
@@ -141,10 +142,6 @@ theme_override_constants/icon_max_width = 20
 text = "No models loaded"
 icon = ExtResource("7_sc1dx")
 flat = false
-item_count = 1
-popup/item_0/text = "Model 0"
-popup/item_0/icon = ExtResource("7_sc1dx")
-popup/item_0/id = 0
 
 [node name="TXT_BoneName" type="RichTextLabel" parent="UI/HBox" unique_id=115128700]
 layout_mode = 2
@@ -493,6 +490,15 @@ layout_mode = 2
 theme_override_constants/icon_max_width = 45
 disabled = true
 icon = ExtResource("11_fpfj3")
+icon_alignment = 1
+
+[node name="BTN_BoneReset" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=1213370536]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 40
+disabled = true
+icon = ExtResource("14_5tuhn")
 icon_alignment = 1
 
 [node name="Footer" type="PanelContainer" parent="UI/HBox" unique_id=91991528]
