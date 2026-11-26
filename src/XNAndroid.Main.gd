@@ -8,10 +8,13 @@ extends Node3D
 @onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 @onready var BTN_lightOn : CheckBox = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer/BTN_LightOn
 @onready var BTN_boneMode : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMode
-@onready var BTN_boneAxis : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneAxis
+@onready var BTN_boneAxisX : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer/BTN_BoneAxis_X
+@onready var BTN_boneAxisY : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer/BTN_BoneAxis_Y
+@onready var BTN_boneAxisZ : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer/BTN_BoneAxis_Z
 @onready var BTN_boneMirror : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMirror
 @onready var BTN_boneUndo : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneUndo
 @onready var BTN_boneRedo : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneRedo
+@onready var BTN_boneShow : Button = $UI/HBox/Center/CenterContainer2/VBoxContainer/BTN_BoneShow
 
 # Popups
 @onready var POPUP_extrasPop : Control = $UI/HBox/Center/VBoxContainer/ExtraPopup
@@ -19,7 +22,8 @@ extends Node3D
 @onready var POPUP_lightsPop : Control = $UI/HBox/Center/VBoxContainer/LightsPopup
 
 # Labels
-@onready var TXT_BoneName : RichTextLabel = $/root/Scene/UI/HBox/Center/VBoxContainer/TXT_BoneName
+@onready var TXT_BoneName : RichTextLabel = $UI/HBox/TXT_BoneName
+@onready var TXT_BoneTransf : RichTextLabel = $UI/HBox/TXT_BoneTransf
 
 # Sliders
 @onready var SLIDER_lightIntensity : HSlider = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/HBoxContainer/HSL_LightIntensity
@@ -36,8 +40,12 @@ extends Node3D
 
 # Variables
 const MODE_ICONS := [preload("res://assets/rotate.png"), preload("res://assets/move.png"), preload("res://assets/scale.png")]  # indexed by PoseController.Mode
-const BONE_AXES := [["X", Vector3(1, 0, 0)], ["Y", Vector3(0, 1, 0)], ["Z", Vector3(0, 0, 1)], ["ALL", Vector3(1, 1, 1)]]
-var _axis_index := 3  # starts on ALL
+
+# Axis buttons only work while HELD. Godot turns just the first finger into mouse events, so the
+# buttons can't see a second finger: held state is tracked from raw touches in _input() instead.
+var _axis_buttons: Array[Button] = []  # X, Y, Z
+var _axis_fingers := {}  # touch index -> axis (0, 1, 2) of the button that finger is holding
+var _axis_mouse: int = -1  # axis held by a real mouse press
 
 # Temp
 var model : Node3D
@@ -50,9 +58,61 @@ func _ready():
 
 # func _process(delta: float) -> void:
 
-func bone_changed( index ):
-	BTN_boneUndo.disabled = POSE_Controller._undo.is_empty()
-	BTN_boneRedo.disabled = POSE_Controller._redo.is_empty()
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			var axis := _axis_button_at(event.position)
+			if axis >= 0:
+				_axis_fingers[event.index] = axis
+				_refresh_held_axes()
+		elif _axis_fingers.has(event.index):
+			_axis_fingers.erase(event.index)
+			_refresh_held_axes()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.device != InputEvent.DEVICE_ID_EMULATION:
+		_axis_mouse = _axis_button_at(event.position) if event.pressed else -1  # emulated touch mouse is covered above
+		_refresh_held_axes()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_axis_fingers.clear()  # a release can get lost when the app loses focus
+		_axis_mouse = -1
+		_refresh_held_axes()
+
+## Which axis button (0 = X, 1 = Y, 2 = Z) is under `pos`, or -1.
+func _axis_button_at(pos: Vector2) -> int:
+	for k in _axis_buttons.size():
+		var btn := _axis_buttons[k]
+		if not btn.disabled and btn.is_visible_in_tree() and btn.get_global_rect().has_point(pos):
+			return k
+	return -1
+
+func _refresh_held_axes() -> void:
+	var held := Vector3.ZERO
+	for axis in _axis_fingers.values():
+		held[axis] = 1.0
+	if _axis_mouse >= 0:
+		held[_axis_mouse] = 1.0
+	POSE_Controller.touch_axes = held
+	for k in _axis_buttons.size():
+		# Shows the pressed look for fingers the button itself can't see.
+		var btn := _axis_buttons[k]
+		if held[k] != 0.0:
+			btn.add_theme_stylebox_override("normal", btn.get_theme_stylebox("pressed"))
+		else:
+			btn.remove_theme_stylebox_override("normal")
+
+func _refresh_history_buttons() -> void:
+	BTN_boneUndo.disabled = not POSE_Controller.can_undo()
+	BTN_boneRedo.disabled = not POSE_Controller.can_redo()
+
+## Shows how far the selected bone is from rest, in the mode being posed: [x, y, z].
+func _refresh_transform_label() -> void:
+	var v := POSE_Controller.get_transform_readout(UI_BoneMarkers.active, POSE_Controller.current_mode)
+	TXT_BoneTransf.text = "[%s, %s, %s]" % [_fmt(v.x), _fmt(v.y), _fmt(v.z)]
+
+static func _fmt(x: float) -> String:
+	x = snappedf(x, 0.001)
+	return String.num(0.0 if absf(x) < 0.0005 else x)
 
 # -----------------| CUSTOM FUNCTIONS |-----------------
 func _setup_ui():
@@ -67,15 +127,18 @@ func _setup_ui():
 		POSE_Controller.touch_mode = ((POSE_Controller.touch_mode + 1) % MODE_ICONS.size()) as PoseController.Mode
 		_sync_bone_mode()
 	)
-	BTN_boneAxis.pressed.connect(func():
-		_axis_index = (_axis_index + 1) % BONE_AXES.size()
-		_sync_bone_axis()
-	)
+	_axis_buttons.assign([BTN_boneAxisX, BTN_boneAxisY, BTN_boneAxisZ])
+	BTN_boneUndo.pressed.connect(POSE_Controller.undo)
+	BTN_boneRedo.pressed.connect(POSE_Controller.redo)
+	POSE_Controller.history_changed.connect(_refresh_history_buttons)
+	POSE_Controller.bone_changed.connect(func(_i): _refresh_transform_label())
+	POSE_Controller.mode_changed.connect(func(_m): _refresh_transform_label())
 	BTN_boneMirror.toggle_mode = true
 	BTN_boneMirror.toggled.connect(func(on: bool): POSE_Controller.mirror_mode = on)
 	POSE_Controller.mirror_mode_changed.connect(func(on: bool): BTN_boneMirror.set_pressed_no_signal(on))  # keeps it in sync with the M key
 	_sync_bone_mode()
-	_sync_bone_axis()
+	_refresh_history_buttons()
+	_refresh_transform_label()
 	
 	## Tapping the bone name deselects (safeguard for when the camera is too close to tap empty space)
 	TXT_BoneName.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -124,10 +187,6 @@ func _setup_ui():
 
 func _sync_bone_mode() -> void:
 	BTN_boneMode.icon = MODE_ICONS[POSE_Controller.touch_mode]
-
-func _sync_bone_axis() -> void:
-	BTN_boneAxis.text = BONE_AXES[_axis_index][0]
-	POSE_Controller.touch_axes = BONE_AXES[_axis_index][1]
 
 func _on_file_selected(path: String, tex_root: String = "") -> void:
 	_tex_root = tex_root if not tex_root.is_empty() else path.get_base_dir()
@@ -217,6 +276,7 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 	
 	UI_BoneMarkers.bone_selected.connect(func(bone):
 		TXT_BoneName.text = "None" if bone < 0 else skeleton.get_bone_name(bone)
+		_refresh_transform_label()
 		
 		if bone < 0:
 			return
@@ -230,9 +290,14 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 	BTN_sceneLights.disabled = false
 	BTN_extrasModel.disabled = false
 	BTN_boneMode.disabled = false
-	BTN_boneAxis.disabled = false
+	for btn in _axis_buttons:
+		btn.disabled = false
 	BTN_boneMirror.disabled = false
-	BTN_boneUndo.disabled = false
+	BTN_boneShow.disabled = false
+	BTN_boneShow.pressed.connect(func():
+		UI_BoneMarkers.markers_visible = not UI_BoneMarkers.markers_visible
+	)
+	_refresh_history_buttons()
 	
 	for child in get_children():
 		if child is FileDialog:
