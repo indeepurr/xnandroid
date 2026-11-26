@@ -125,6 +125,22 @@ theme_override_constants/icon_max_width = 20
 text = "Load"
 icon = ExtResource("1_glv2v")
 
+[node name="TXT_BoneName" type="RichTextLabel" parent="UI/HBox" unique_id=115128700]
+layout_mode = 2
+mouse_filter = 2
+text = "None"
+fit_content = true
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TXT_BoneTransf" type="RichTextLabel" parent="UI/HBox" unique_id=1480763851]
+layout_mode = 2
+mouse_filter = 2
+text = "[0, 0, 0]"
+fit_content = true
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="Center" type="Control" parent="UI/HBox" unique_id=971060541]
 layout_mode = 2
 size_flags_vertical = 3
@@ -347,25 +363,19 @@ size_flags_stretch_ratio = 0.1
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="TXT_BoneName" type="RichTextLabel" parent="UI/HBox/Center/VBoxContainer" unique_id=115128700]
-layout_mode = 2
-mouse_filter = 2
-text = "None"
-fit_content = true
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="CenterContainer" type="CenterContainer" parent="UI/HBox/Center" unique_id=92476385]
+custom_maximum_size = Vector2(53, -1)
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_top = -281.0
-offset_right = 53.0
+offset_right = 167.0
 grow_vertical = 0
 mouse_filter = 0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UI/HBox/Center/CenterContainer" unique_id=1623563586]
+propagate_maximum_size = false
 layout_mode = 2
 alignment = 1
 
@@ -378,13 +388,37 @@ disabled = true
 icon = ExtResource("7_5vvyt")
 icon_alignment = 1
 
-[node name="BTN_BoneAxis" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=2005989808]
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=691579975]
+layout_mode = 2
+
+[node name="BTN_BoneAxis_X" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer" unique_id=2005989808]
 custom_minimum_size = Vector2(53, 53)
 clip_contents = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 30
 disabled = true
-text = "ALL"
+text = "X
+"
+icon_alignment = 1
+
+[node name="BTN_BoneAxis_Y" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer" unique_id=1994291439]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+disabled = true
+text = "Y
+"
+icon_alignment = 1
+
+[node name="BTN_BoneAxis_Z" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer" unique_id=1587168977]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+disabled = true
+text = "Z
+"
 icon_alignment = 1
 
 [node name="BTN_BoneMirror" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=1423825215]
@@ -438,46 +472,6 @@ layout_mode = 2
 theme_override_constants/icon_max_width = 45
 disabled = true
 icon = ExtResource("11_fpfj3")
-icon_alignment = 1
-
-[node name="BTN_BoneAxis" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=1873021607]
-visible = false
-custom_minimum_size = Vector2(53, 53)
-clip_contents = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-disabled = true
-text = "ALL"
-icon_alignment = 1
-
-[node name="BTN_BoneMirror" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=1162227590]
-visible = false
-custom_minimum_size = Vector2(53, 53)
-clip_contents = true
-layout_mode = 2
-theme_override_constants/icon_max_width = 35
-disabled = true
-icon = ExtResource("8_c6i3y")
-icon_alignment = 1
-
-[node name="BTN_BoneUndo" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=298648191]
-visible = false
-custom_minimum_size = Vector2(53, 53)
-clip_contents = true
-layout_mode = 2
-theme_override_constants/icon_max_width = 35
-disabled = true
-icon = ExtResource("9_c2ibq")
-icon_alignment = 1
-
-[node name="BTN_BoneRedo" type="Button" parent="UI/HBox/Center/CenterContainer2/VBoxContainer" unique_id=202799105]
-visible = false
-custom_minimum_size = Vector2(53, 53)
-clip_contents = true
-layout_mode = 2
-theme_override_constants/icon_max_width = 35
-disabled = true
-icon = ExtResource("10_j4qnp")
 icon_alignment = 1
 
 [node name="Footer" type="PanelContainer" parent="UI/HBox" unique_id=91991528]
