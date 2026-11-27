@@ -2,7 +2,9 @@ class_name BoneMarkers
 
 extends Control
 
-signal bone_selected(index: int)  # -1 = nothing selected
+signal bone_selected(index: int)  # -1 = nothing selected, ROOT = the model's scene node
+
+const ROOT := -2  ## "bone" index meaning the whole model (its scene node) is selected, not one of its bones
 
 @export var normal_color := Color(1, 1, 1, 0.55)
 @export var selected_color := Color(1.0, 0.75, 0.1, 1.0)
@@ -20,6 +22,9 @@ var markers_visible: bool = true:
 		queue_redraw()
 
 var input_enabled: bool = true  ## set false while popups are open
+## Set by PoseController. While it returns true a press/release must NOT change the selection: the
+## press was used for posing (a one-step nudge is as short as a tap), or an axis is being held.
+var tap_blocked := Callable()
 var active: int = -1
 var mirror_bone: int = -1:
 	set(v):
@@ -44,7 +49,20 @@ func setup(skel: Skeleton3D, cam: Camera3D) -> void:
 	skeleton = skel
 	camera = cam
 	active = -1
+	mirror_bone = -1
+	_screen.resize(0)  # the old skeleton's projected positions mean nothing for this one
+	_on.resize(0)
 	mark_dirty()
+	queue_redraw()
+
+## No model is active any more (or the old one is about to be freed): drop every reference to it.
+func clear() -> void:
+	skeleton = null
+	active = -1
+	mirror_bone = -1
+	_screen.resize(0)
+	_on.resize(0)
+	queue_redraw()
 
 ## Call after the pose changes (e.g. at the end of PoseManager.apply_pose()).
 func mark_dirty() -> void:
@@ -137,7 +155,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			var moved : float = event.position.distance_to(_press_pos)
 			var elapsed := Time.get_ticks_msec() - _press_ms
-			if moved <= tap_slop and elapsed <= tap_max_ms and not _multi_touch:
+			var blocked: bool = tap_blocked.is_valid() and tap_blocked.call()
+			if moved <= tap_slop and elapsed <= tap_max_ms and not _multi_touch and not blocked:
 				var hit := pick(event.position)
 				if hit != -1 or deselect_on_empty_tap:
 					select(hit)

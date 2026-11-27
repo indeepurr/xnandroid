@@ -20,6 +20,8 @@ extends Node
 ##
 ## Bone rotation is stored as a Quaternion, so there's no gimbal lock or Euler order to worry about.
 
+const ROOT := BoneMarkers.ROOT  ## target index for "the whole model" (its scene node) instead of one bone
+
 signal bone_changed(index: int)  # a bone's pose changed (-1 = everything, after reset_all)
 signal global_mode_changed(is_global: bool)
 signal mirror_mode_changed(enabled: bool)
@@ -70,7 +72,8 @@ var touch_mode: Mode = Mode.ROTATE:
 		touch_mode = v
 		_set_current_mode(v)
 
-## The mode actually being posed right now (differs from touch_mode only while a modifier overrides it).
+## The mode last posed in (what the readout shows). Differs from touch_mode after a Shift / Ctrl drag on desktop,
+## until the next plain drag or a press of the mode button.
 var current_mode: Mode = Mode.ROTATE
 
 ## A touch has to move this many pixels before it starts posing, so tapping another bone to select it
@@ -80,12 +83,15 @@ var current_mode: Mode = Mode.ROTATE
 var skeleton: Skeleton3D
 var camera: Camera3D
 var markers: BoneMarkers
+var model_root: Node3D  # the active model's scene node; edited when ROOT is selected
+var _root_rest := Transform3D.IDENTITY  # what resetting the model's node goes back to
 
 var _drag_bone: int = -1
 var _drag_bones: Array[int] = []  # dragged bone + its partner (captured even if mirroring is off, so toggling M mid-drag stays undoable)
 var _drag_before: Array = []  # one captured state per entry of _drag_bones
 var _press_pos := Vector2.ZERO
 var _drag_live: bool = true  # false while a touch is still inside touch_drag_slop
+var _posed_this_press: bool = false  # this press was used for posing, so BoneMarkers must not read it as a tap
 var _finger: int = -1  # a non-emulated finger (index > 0) that owns the current drag; -1 = mouse / first finger
 var _step_accum: float = 0.0  # drag pixels collected towards the next step
 var _step_mode: Mode = Mode.ROTATE
@@ -93,18 +99,42 @@ var _mirror_of := PackedInt32Array()  # partner bone index per bone, -1 = none
 var _undo: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 
-func setup(skel: Skeleton3D, cam: Camera3D, bone_markers: BoneMarkers) -> void:
+## Points the controller at a model. `undo_stack` / `redo_stack` belong to that model (bone indices only
+## mean something for their own skeleton), so pass the model's own arrays: they're edited in place, which
+## is why switching models needs no save / restore step.
+func setup(skel: Skeleton3D, cam: Camera3D, bone_markers: BoneMarkers, root: Node3D = null, root_rest := Transform3D.IDENTITY, undo_stack: Array[Dictionary] = [], redo_stack: Array[Dictionary] = []) -> void:
 	skeleton = skel
 	camera = cam
 	markers = bone_markers
+	if is_instance_valid(markers):
+		markers.tap_blocked = _tap_blocked
+	model_root = root
+	_root_rest = root_rest
 	_drag_bone = -1
+	_drag_bones = []
+	_drag_before = []
 	_finger = -1
-	_undo.clear()
-	_redo.clear()
+	_undo = undo_stack
+	_redo = redo_stack
 	history_changed.emit()
 	_build_mirror_map()
 	if is_instance_valid(markers) and not markers.bone_selected.is_connected(_on_bone_selected):
 		markers.bone_selected.connect(_on_bone_selected)
+	_refresh_mirror_marker()
+
+## No model is active (or the active one is about to be freed): drop every reference to it.
+func clear() -> void:
+	skeleton = null
+	model_root = null
+	_drag_bone = -1
+	_drag_bones = []
+	_drag_before = []
+	_finger = -1
+	_undo = []
+	_redo = []
+	_mirror_of = PackedInt32Array()
+	mirror_pair_count = 0
+	history_changed.emit()
 	_refresh_mirror_marker()
 
 ## Which axes are currently unlocked, as (x, y, z) flags of 0 or 1.
@@ -122,7 +152,7 @@ func held_axes() -> Vector3:
 func is_manipulating() -> bool:
 	if _drag_bone != -1:
 		return true
-	return _active_bone() >= 0 and held_axes() != Vector3.ZERO
+	return _has_target() and held_axes() != Vector3.ZERO
 
 func can_undo() -> bool:
 	return not _undo.is_empty()
@@ -135,8 +165,18 @@ func can_redo() -> bool:
 ## Without a valid bone it returns the rest values, so a label can always show something.
 func get_transform_readout(bone: int, mode: Mode) -> Vector3:
 	var rest_value := Vector3.ONE if mode == Mode.SCALE else Vector3.ZERO
-	if not is_instance_valid(skeleton) or bone < 0 or bone >= skeleton.get_bone_count():
+	if not _valid_target(bone):
 		return rest_value
+	if bone == ROOT:
+		match mode:
+			Mode.ROTATE:
+				var rq := _root_rest.basis.get_rotation_quaternion().inverse() * model_root.quaternion
+				var re := rq.get_euler()
+				return Vector3(rad_to_deg(re.x), rad_to_deg(re.y), rad_to_deg(re.z))
+			Mode.MOVE:
+				return model_root.position - _root_rest.origin
+			_:
+				return model_root.scale
 	var rest := skeleton.get_bone_rest(bone)
 	match mode:
 		Mode.ROTATE:
@@ -159,9 +199,10 @@ func get_pose_readout(bone: int) -> Dictionary:
 # ---------------- editing API (input below and future touch UI both use this) ----------------
 ## Call before a series of manipulate() calls; end_edit() commits ONE undo entry.
 func begin_edit(bone: int) -> void:
-	if not is_instance_valid(skeleton) or bone < 0 or bone >= skeleton.get_bone_count():
+	if not _valid_target(bone):
 		return
 	_drag_bone = bone
+	_posed_this_press = true
 	_step_accum = 0.0
 	_drag_bones = _edit_set(bone)
 	_drag_before = []
@@ -189,7 +230,6 @@ func end_edit() -> void:
 	_drag_before = []
 	_finger = -1
 	_step_accum = 0.0
-	_set_current_mode(touch_mode)  # a Shift / Ctrl override ends with the drag
 
 ## `axes` = (x, y, z) flags, `delta_px` = drag amount in pixels (sign = increase / decrease).
 ## Pixels are collected until they add up to whole steps, so posing snaps to the step values.
@@ -209,11 +249,21 @@ func manipulate(bone: int, mode: Mode, axes: Vector3, delta_px: float) -> void:
 
 ## Applies `steps` whole steps (negative = the other way). Also usable directly, e.g. from tap buttons.
 func apply_steps(bone: int, mode: Mode, axes: Vector3, steps: int) -> void:
-	if not is_instance_valid(skeleton) or bone < 0 or bone >= skeleton.get_bone_count():
+	if not _valid_target(bone):
 		return
 	if axes == Vector3.ZERO or steps == 0:
 		return
 	_set_current_mode(mode)
+	if bone == ROOT:  # the whole model: same steps, applied to its scene node
+		match mode:
+			Mode.ROTATE:
+				_rotate_root(axes, deg_to_rad(rotate_step_deg) * steps)
+			Mode.MOVE:
+				_move_root(axes, move_step * steps)
+			Mode.SCALE:
+				_scale_root(axes, scale_step * steps)
+		_changed(ROOT)
+		return
 	match mode:
 		Mode.ROTATE:
 			_rotate(bone, axes, deg_to_rad(rotate_step_deg) * steps)
@@ -229,7 +279,7 @@ func apply_steps(bone: int, mode: Mode, axes: Vector3, steps: int) -> void:
 	_changed(bone)
 
 func reset_bone(bone: int) -> void:
-	if not is_instance_valid(skeleton) or bone < 0 or bone >= skeleton.get_bone_count():
+	if not _valid_target(bone):
 		return
 	# While mirroring, the partner is reset too, as part of the same undo entry.
 	var bones: Array[int] = []
@@ -237,7 +287,10 @@ func reset_bone(bone: int) -> void:
 	var after: Array = []
 	for b in _mirror_targets(bone):
 		var was := _capture(b)
-		skeleton.reset_bone_pose(b)
+		if b == ROOT:
+			model_root.transform = _root_rest
+		else:
+			skeleton.reset_bone_pose(b)
 		var now := _capture(b)
 		if now != was:
 			bones.append(b)
@@ -284,6 +337,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_drag(event.relative, false, false)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			_posed_this_press = false  # begin_edit() below sets it again if this press poses
 			_press_pos = event.position
 			_drag_live = event.device != InputEvent.DEVICE_ID_EMULATION  # emulated from touch -> needs the slop first
 			if _drag_bone == -1 and _can_pose():
@@ -323,9 +377,13 @@ func _on_screen_touch(event: InputEventScreenTouch) -> void:
 	elif event.index == _finger:
 		end_edit()
 
+## Used by BoneMarkers: a press that posed, or that happens while an axis is held, is not a selecting tap.
+func _tap_blocked() -> bool:
+	return _posed_this_press or held_axes() != Vector3.ZERO
+
 ## True when a bone is selected and an axis is held, i.e. a drag would pose it.
 func _can_pose() -> bool:
-	return _active_bone() >= 0 and held_axes() != Vector3.ZERO
+	return _has_target() and held_axes() != Vector3.ZERO
 
 func _drag(relative: Vector2, shift: bool, ctrl: bool) -> void:
 	# Modifiers are read on every motion event, so you can switch mode mid-drag.
@@ -401,6 +459,28 @@ func _scale(i: int, axes: Vector3, amount: float) -> void:
 		s.z = snappedf(clampf(s.z + amount, min_scale, max_scale), 0.0001)
 	skeleton.set_bone_pose_scale(i, s)
 
+# The model's own node: same axes / space rules as bones (global_mode = scene axes, otherwise the model's own).
+func _rotate_root(axes: Vector3, angle: float) -> void:
+	var rot := model_root.quaternion
+	var axis := axes.normalized()
+	if not global_mode:
+		axis = rot * axis
+	model_root.quaternion = (Quaternion(axis.normalized(), angle) * rot).normalized()
+
+func _move_root(axes: Vector3, distance: float) -> void:
+	var dir := axes if global_mode else model_root.quaternion * axes
+	model_root.position += dir * distance
+
+func _scale_root(axes: Vector3, amount: float) -> void:
+	var s := model_root.scale
+	if axes.x != 0.0:
+		s.x = snappedf(clampf(s.x + amount, min_scale, max_scale), 0.0001)
+	if axes.y != 0.0:
+		s.y = snappedf(clampf(s.y + amount, min_scale, max_scale), 0.0001)
+	if axes.z != 0.0:
+		s.z = snappedf(clampf(s.z + amount, min_scale, max_scale), 0.0001)
+	model_root.scale = s
+
 func _parent_global_basis(i: int) -> Basis:
 	var p := skeleton.get_bone_parent(i)
 	return skeleton.get_bone_global_pose(p).basis if p >= 0 else Basis.IDENTITY
@@ -418,7 +498,19 @@ func _world_per_pixel(world_pos: Vector3) -> float:
 func _active_bone() -> int:
 	return markers.active if is_instance_valid(markers) else -1
 
+## A bone is selected, or the model's node (ROOT) is.
+func _has_target() -> bool:
+	return _valid_target(_active_bone())
+
+## `bone` is something that can be edited: ROOT (with a model node), or a real bone index.
+func _valid_target(bone: int) -> bool:
+	if bone == ROOT:
+		return is_instance_valid(model_root)
+	return is_instance_valid(skeleton) and bone >= 0 and bone < skeleton.get_bone_count()
+
 func _capture(i: int) -> Array:
+	if i == ROOT:
+		return [model_root.position, model_root.quaternion, model_root.scale]
 	return [
 		skeleton.get_bone_pose_position(i),
 		skeleton.get_bone_pose_rotation(i),
@@ -426,6 +518,13 @@ func _capture(i: int) -> Array:
 	]
 
 func _restore(i: int, state: Array) -> void:
+	if i == ROOT:
+		if is_instance_valid(model_root):
+			model_root.position = state[0]
+			model_root.scale = state[2]
+			model_root.quaternion = state[1]
+			_changed(ROOT)
+		return
 	skeleton.set_bone_pose_position(i, state[0])
 	skeleton.set_bone_pose_rotation(i, state[1])
 	skeleton.set_bone_pose_scale(i, state[2])

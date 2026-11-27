@@ -5,7 +5,7 @@ extends Node3D
 # Buttons
 @onready var BTN_loadModel : Button = $UI/HBox/Header/HeaderOptions/BTN_loadModel
 @onready var BTN_removeModel : Button = $UI/HBox/Header/HeaderOptions/BTN_removeModel
-@onready var BTN_sceneModels : Button = $UI/HBox/Header/HeaderOptions/MENU_sceneModels
+@onready var BTN_sceneModels : MenuButton = $UI/HBox/Header/HeaderOptions/MENU_sceneModels
 @onready var BTN_sceneLights : Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
 @onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 @onready var BTN_lightOn : CheckBox = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer/BTN_LightOn
@@ -53,11 +53,22 @@ var _axis_buttons: Array[Button] = []  # X, Y, Z
 var _axis_fingers := {}  # touch index -> axis (0, 1, 2) of the button that finger is holding
 var _axis_mouse: int = -1  # axis held by a real mouse press
 
-# Temp
-var model : Node3D
-var skeleton : Skeleton3D
-var textures := {}
-var _tex_root := ""  # where textures are read from: a folder path, or an Android folder (tree) URI
+const MODEL_ICON := preload("res://assets/model.png")
+const MAX_MODELS := 2  ## how many models can be in the scene at once (2 while testing; raise it freely)
+const LOG_PERF := true  ## prints object / memory / render stats after every add and remove, see _log_perf()
+
+## Everything that belongs to ONE model in the scene.
+class ModelEntry extends RefCounted:
+	var name: String  ## shown in the models menu: the folder the .xps was in
+	var root: Node3D  ## the model's scene node (moving / rotating / scaling it moves the whole model)
+	var skeleton: Skeleton3D
+	var spawn_transform := Transform3D.IDENTITY  ## where it was placed; resetting the model's node goes back here
+	var undo: Array[Dictionary] = []  ## pose history, per model: bone indices only mean something for their own skeleton
+	var redo: Array[Dictionary] = []
+
+var _models: Array[ModelEntry] = []
+var _active: ModelEntry  ## the model whose bones are shown and which can be posed
+var _model_counter := 0
 
 func _ready():
 	_setup_ui()
@@ -138,6 +149,15 @@ func _setup_ui():
 	BTN_extrasModel.pressed.connect(func(): POPUP_extrasPop.visible = not POPUP_extrasPop.visible)
 	BTN_sceneLights.pressed.connect(func(): POPUP_lightsPop.visible = not POPUP_lightsPop.visible)
 	
+	## Models
+	BTN_removeModel.pressed.connect(_remove_active_model)
+	BTN_sceneModels.get_popup().id_pressed.connect(_on_model_menu_pressed)
+	BTN_boneShow.pressed.connect(func():
+		UI_BoneMarkers.markers_visible = not UI_BoneMarkers.markers_visible
+	)
+	UI_BoneMarkers.bone_selected.connect(_on_bone_selected)
+	_refresh_model_ui()
+	
 	## Bone tools (phone)
 	BTN_boneMode.pressed.connect(func():
 		POSE_Controller.touch_mode = ((POSE_Controller.touch_mode + 1) % MODE_ICONS.size()) as PoseController.Mode
@@ -210,36 +230,50 @@ func _sync_bone_mode() -> void:
 	BTN_boneMode.icon = MODE_ICONS[POSE_Controller.touch_mode]
 
 func _on_file_selected(path: String, tex_root: String = "") -> void:
-	_tex_root = tex_root if not tex_root.is_empty() else path.get_base_dir()
+	_free_file_dialogs()
+	if _models.size() >= MAX_MODELS:
+		print("Model limit reached (%d)" % MAX_MODELS)
+		return
 	
 	var parser := XPSParser.new()
 	var data := parser.parse(path)
 	
 	if data.is_empty():
 		print( parser.last_error )
-		
-		for child in get_children():
-			if child is FileDialog:
-				child.queue_free()
 		return
 	
-	if model:
-		model.queue_free()
-		textures.clear()
+	_add_model(data, tex_root if not tex_root.is_empty() else path.get_base_dir())
+
+## Builds a model from parsed data, puts it in the scene and makes it the active one.
+func _add_model(data: Dictionary, tex_root: String) -> ModelEntry:
+	var entry := _build_model(data, tex_root)
+	add_child(entry.root)
+	_place_model(entry)
+	_models.append(entry)
+	_rebuild_models_menu()
+	_set_active_model(entry)
+	_log_perf("added '%s'" % entry.name)
+	return entry
+
+func _build_model(data: Dictionary, tex_root: String) -> ModelEntry:
+	var entry := ModelEntry.new()
+	_model_counter += 1
+	entry.name = _unique_model_name(_folder_name(tex_root))
+	entry.root = Node3D.new()
+	entry.root.name = "Model_%d" % _model_counter
 	
-	model = Node3D.new()
+	entry.skeleton = XPSParser.build_skeleton(data["bones"])
+	entry.skeleton.name = "Armature"
+	entry.root.add_child(entry.skeleton)
 	
-	model.name = "Model 0"
-	
-	skeleton = XPSParser.build_skeleton(data["bones"])
-	skeleton.name = "Armature"
-	model.add_child( skeleton )
+	# path -> texture, only needed while building (parts share textures). The materials keep the
+	# textures alive, so nothing here outlives the model it was built for.
+	var textures := {}
 	
 	for mesh in data["meshes"]:
-		print(mesh["name"])
-		
 		var mesh_inst := MeshInstance3D.new()
 		mesh_inst.name = mesh["name"]
+		mesh_inst.set_meta("part_name", mesh["name"])  # the node name can get sanitized / renamed; the UI shows this
 		var mesh_arr := ArrayMesh.new()
 		mesh_arr.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh["arrays"])
 		mesh_inst.mesh = mesh_arr
@@ -256,7 +290,7 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 			if idx > 0:
 				break
 			
-			var tex_path := _texture_path(mesh["textures"][idx]["file"])
+			var tex_path := _texture_path(tex_root, mesh["textures"][idx]["file"])
 			var tex := XPSParser.load_texture(tex_path, textures)
 			
 			if tex == null:
@@ -275,55 +309,174 @@ func _on_file_selected(path: String, tex_root: String = "") -> void:
 			#else:
 				#material.normal_enabled = true
 				#material.normal_texture = tex
-			
+		
 		mesh_inst.material_override = material
 		
-		model.add_child( mesh_inst )
+		entry.root.add_child( mesh_inst )
 		
 		mesh_inst.skeleton = NodePath("../Armature")
-		
+	
+	return entry
+
+## New models go beside the ones already there instead of spawning on top of them.
+func _place_model(entry: ModelEntry) -> void:
+	var box := _model_bounds(entry.root)
+	if not _models.is_empty():
+		var right := -INF
+		for e in _models:
+			right = maxf(right, _model_bounds(e.root).end.x)
+		entry.root.position.x = right + maxf(box.size.x * 0.25, 0.1) - box.position.x
+	entry.spawn_transform = entry.root.transform
+
+## World-space bounds of a model's meshes (rest pose).
+func _model_bounds(root: Node3D) -> AABB:
+	var box := AABB()
+	var first := true
+	for c in root.get_children():
+		if c is MeshInstance3D and c.mesh:
+			var b: AABB = c.global_transform * c.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+	return box
+
+## Makes `entry` the model that's shown for posing: its bones get markers, the others' don't. The selection
+## is always cleared. `select_root` selects the model's scene node too, so it can be moved / rotated / scaled.
+func _set_active_model(entry: ModelEntry, select_root := false) -> void:
+	var cam: Camera3D = $CamRig/Camera3D
+	UI_BoneMarkers.select(-1)
+	_active = entry
+	UI_BoneMarkers.setup(entry.skeleton, cam)
+	POSE_Controller.setup(entry.skeleton, cam, UI_BoneMarkers, entry.root, entry.spawn_transform, entry.undo, entry.redo)
+	_rebuild_parts_popup()
+	_refresh_model_ui()
+	_refresh_transform_label()
+	if select_root:
+		UI_BoneMarkers.select(BoneMarkers.ROOT)
+
+## Removes the active model. Everything that points at it is switched away BEFORE it's freed.
+func _remove_active_model() -> void:
+	if _active == null:
+		return
+	var entry := _active
+	UI_BoneMarkers.select(-1)
+	_models.erase(entry)
+	_active = null
+	if _models.is_empty():
+		POSE_Controller.clear()
+		UI_BoneMarkers.clear()
+		_rebuild_parts_popup()
+		_rebuild_models_menu()
+	else:
+		_rebuild_models_menu()
+		_set_active_model(_models.back())
+	entry.root.queue_free()  # its meshes, materials and textures go with it (nothing else holds them)
+	_log_perf("removed '%s'" % entry.name)
+
+func _on_model_menu_pressed(id: int) -> void:
+	if id >= 0 and id < _models.size():
+		_set_active_model(_models[id], true)
+
+func _rebuild_models_menu() -> void:
+	var popup := BTN_sceneModels.get_popup()
+	popup.clear()
+	for i in _models.size():
+		popup.add_icon_item(MODEL_ICON, _models[i].name, i)  # id = index in _models
+	_refresh_model_ui()
+
+## The extras popup lists the ACTIVE model's parts; rebuilt whenever the active model changes.
+func _rebuild_parts_popup() -> void:
+	for c in POPUP_extrasParts.get_children():
+		POPUP_extrasParts.remove_child(c)
+		c.queue_free()
+	if _active == null:
+		return
+	for child in _active.root.get_children():
+		if not child is MeshInstance3D:
+			continue
+		var mesh_inst: MeshInstance3D = child
 		var checkPart = CheckButton.new()
 		checkPart.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		checkPart.add_theme_font_size_override("font_size", 13)
 		checkPart.mouse_filter = Control.MOUSE_FILTER_PASS
-		checkPart.text = mesh["name"]
-		checkPart.button_pressed = true
+		checkPart.text = str(mesh_inst.get_meta("part_name", mesh_inst.name))
+		checkPart.button_pressed = mesh_inst.visible
 		checkPart.pressed.connect(func(): mesh_inst.visible = checkPart.button_pressed)
 		POPUP_extrasParts.add_child(checkPart)
-	
-	add_child(model)
-	
-	UI_BoneMarkers.setup(skeleton, $CamRig/Camera3D)
-	
-	UI_BoneMarkers.bone_selected.connect(func(bone):
-		TXT_BoneName.text = "None" if bone < 0 else skeleton.get_bone_name(bone)
-		_refresh_transform_label()
-		
-		if bone < 0:
-			return
-		
-		print("selected bone %s (index: %d)" % [ skeleton.get_bone_name(bone), bone ])
-	)
-	
-	POSE_Controller.setup(skeleton, $CamRig/Camera3D, UI_BoneMarkers)
-	
-	BTN_loadModel.disabled = true
-	BTN_sceneLights.disabled = false
-	BTN_extrasModel.disabled = false
-	BTN_boneMode.disabled = false
+
+func _refresh_model_ui() -> void:
+	var has := _active != null
+	BTN_loadModel.disabled = _models.size() >= MAX_MODELS
+	BTN_removeModel.disabled = not has
+	BTN_sceneModels.disabled = not has
+	BTN_sceneModels.text = _short(_active.name) if has else "No models loaded"
+	BTN_sceneLights.disabled = not has
+	BTN_extrasModel.disabled = not has
+	BTN_boneMode.disabled = not has
 	for btn in _axis_buttons:
-		btn.disabled = false
-	BTN_boneMirror.disabled = false
-	BTN_boneShow.disabled = false
-	BTN_boneShow.pressed.connect(func():
-		UI_BoneMarkers.markers_visible = not UI_BoneMarkers.markers_visible
-	)
-	BTN_boneReset.disabled = false
+		btn.disabled = not has
+	BTN_boneMirror.disabled = not has
+	BTN_boneShow.disabled = not has
+	BTN_boneReset.disabled = not has
+	if not has:
+		POPUP_extrasPop.visible = false
+		POPUP_lightsPop.visible = false
 	_refresh_history_buttons()
-	
-	for child in get_children():
-		if child is FileDialog:
-			child.queue_free()
+
+func _on_bone_selected(bone: int) -> void:
+	TXT_BoneName.text = _selection_name(bone)
+	_refresh_transform_label()
+	if bone >= 0 and _active:
+		print("selected bone %s (index: %d)" % [ _active.skeleton.get_bone_name(bone), bone ])
+
+func _selection_name(bone: int) -> String:
+	if bone == BoneMarkers.ROOT:
+		return "%s (model)" % _active.name if _active else "None"
+	if bone < 0 or _active == null or bone >= _active.skeleton.get_bone_count():
+		return "None"
+	return _active.skeleton.get_bone_name(bone)
+
+## The menu button has little room: long folder names are cut there (the popup shows them whole).
+static func _short(n: String, max_chars := 14) -> String:
+	return n if n.length() <= max_chars else n.substr(0, max_chars - 1) + "…"
+
+func _unique_model_name(base: String) -> String:
+	var n := base
+	var k := 2
+	while _models.any(func(e: ModelEntry): return e.name == n):
+		n = "%s (%d)" % [base, k]
+		k += 1
+	return n
+
+## The folder a model was loaded from: the last part of a path, or of an Android folder (tree) URI.
+static func _folder_name(root: String) -> String:
+	var s := root
+	if s.begins_with("content://"):
+		if s.contains("/tree/"):
+			s = s.get_slice("/tree/", 1)
+		s = s.get_slice("/document/", 0).uri_decode()  # e.g. "primary:Download/1DM/Others/Haze"
+	var parts := s.replace("\\", "/").replace(":", "/").split("/", false)
+	return parts[parts.size() - 1] if parts.size() > 0 else "Model"
+
+## For checking performance and leaks: logs the counts that should return to where they were after a remove.
+## Waits two frames so queue_free()'d nodes are really gone. The render numbers are 0 when headless.
+func _log_perf(tag: String) -> void:
+	if not LOG_PERF:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var mb := 1.0 / (1024.0 * 1024.0)
+	print("[perf] %s | models=%d fps=%d objects=%d nodes=%d orphans=%d resources=%d | mem static=%.1fMB tex=%.1fMB buffers=%.1fMB video=%.1fMB | draws=%d prims=%d" % [
+		tag, _models.size(), Performance.get_monitor(Performance.TIME_FPS),
+		Performance.get_monitor(Performance.OBJECT_COUNT),
+		Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+		Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT),
+		Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT),
+		Performance.get_monitor(Performance.MEMORY_STATIC) * mb,
+		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) * mb,
+		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) * mb,
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) * mb,
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
 
 ## Opens the system picker. On Android it picks a FOLDER, because Android only lets the app read
 ## the files you grant it: the folder grant covers the model AND its textures.
@@ -425,10 +578,10 @@ func _list_tree_files(tree_uri: String) -> PackedStringArray:
 	return names
 
 ## Where a texture named in the model lives: "treeUri#file" on Android, "folder/file" elsewhere.
-func _texture_path(file: String) -> String:
-	if _tex_root.begins_with("content://"):
-		return _tex_root + "#" + file
-	return _tex_root.path_join(file)
+func _texture_path(tex_root: String, file: String) -> String:
+	if tex_root.begins_with("content://"):
+		return tex_root + "#" + file
+	return tex_root.path_join(file)
 
 func _free_file_dialogs() -> void:
 	for child in get_children():
