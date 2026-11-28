@@ -9,7 +9,7 @@ extends Node3D
 @onready var BTN_sceneLights : Button = $UI/HBox/Footer/FooterOptions/BTN_sceneLights
 @onready var BTN_extrasModel : Button = $UI/HBox/Footer/FooterOptions/BTN_extrasModel
 @onready var BTN_lightOn : CheckBox = $UI/HBox/Center/VBoxContainer/LightsPopup/PanelContainer2/VBoxContainer3/VBoxContainer2/CenterContainer/BTN_LightOn
-@onready var BTN_boneMode : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/BTN_BoneMode
+@onready var BTN_boneMode : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer2/BTN_BoneMode
 @onready var BTN_boneAxisX : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer/BTN_BoneAxis_X
 @onready var BTN_boneAxisY : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer/BTN_BoneAxis_Y
 @onready var BTN_boneAxisZ : Button = $UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer/BTN_BoneAxis_Z

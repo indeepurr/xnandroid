@@ -406,13 +406,26 @@ propagate_maximum_size = false
 layout_mode = 2
 alignment = 1
 
-[node name="BTN_BoneMode" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=750302949]
+[node name="HBoxContainer2" type="HBoxContainer" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=1609901270]
+layout_mode = 2
+
+[node name="BTN_BoneMode" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer2" unique_id=750302949]
 custom_minimum_size = Vector2(53, 53)
 clip_contents = true
 layout_mode = 2
 theme_override_constants/icon_max_width = 45
 disabled = true
 icon = ExtResource("7_5vvyt")
+icon_alignment = 1
+
+[node name="BTN_BoneGlobal" type="Button" parent="UI/HBox/Center/CenterContainer/VBoxContainer/HBoxContainer2" unique_id=2021648001]
+custom_minimum_size = Vector2(53, 53)
+clip_contents = true
+layout_mode = 2
+theme_override_constants/icon_max_width = 45
+theme_override_font_sizes/font_size = 30
+disabled = true
+text = "G"
 icon_alignment = 1
 
 [node name="HBoxContainer" type="HBoxContainer" parent="UI/HBox/Center/CenterContainer/VBoxContainer" unique_id=691579975]
